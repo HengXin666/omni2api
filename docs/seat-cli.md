@@ -55,6 +55,11 @@ oh-seat reply 'Done.' --next          # answer, then wait for the next message
 
 - **One command = one complete step.** `tool` sends and waits; `reply --next`
   answers and waits. Fewer round-trips through the agent's context.
+- **The loop must stay coupled to the agent.** `next` runs in the
+  foreground so its return re-invokes the agent that answers. A
+  backgrounded loop only counts as sitting if the harness wakes the
+  agent when it finishes; otherwise requests buffer unanswered while a
+  process idles, and the seat is unmanned in every way that matters.
 - **Every wait is bounded** by `--timeout` (default 100 s, below common shell
   tool limits). Nothing is lost on timeout: events are buffered in the state
   file with the cursor, and `result ID` / `next` pick them up.

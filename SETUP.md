@@ -133,21 +133,37 @@ oh-seat reply "…" # answer it, then run `oh-seat next` again
 caller's tools (shell, file edits…) are yours through `oh-seat tool`; see
 the guide.
 
-- Keep the loop going for as long as you can run. Exit 2 just means
-  nothing arrived yet — run `oh-seat next` again. Expect the first
-  request to take a while (the user still has to paste the config into
-  their tool): minutes of silence at the start are normal, not a reason
-  to stop waiting.
-- If your environment supports background or long-running commands, run
-  the loop as one and keep it alive while you do other things.
+- Run `oh-seat next` in the FOREGROUND, as an ordinary command, and let
+  it block. Most agent harnesses only run you when you are invoked — and
+  a finished foreground command is an invocation: its output is your
+  alarm clock. A message arrived → answer it, then run `oh-seat next`
+  again, in the same turn. Exit 2 → nothing yet, run it again. Keep
+  cycling for as long as you are on duty. Expect the first request to
+  take a while (the user still has to paste the config into their
+  tool): minutes of silence at the start are normal, not a reason to
+  stop waiting.
+- A background loop counts as sitting only if its finishing hands
+  control back to you — your harness wakes you with its output. If a
+  backgrounded `oh-seat next` merely writes to a log that nobody reads
+  until the user complains, the seat is unmanned even though a process
+  is "waiting". Being able to start a background process is not the
+  same as being able to stay; this exact mix-up is the failure this
+  step exists to prevent.
+- Whenever you are invoked for any other reason while on duty — the
+  user writes to you directly, another command returns — check the
+  seat before anything else: `oh-seat status` shows open turns, and
+  `oh-seat next` picks up whatever buffered meanwhile. Answer what is
+  already waiting first. Requests wait server-side, so a quiet seat
+  is not necessarily an empty one.
 - If your environment truly cannot keep you in the loop — your session
   ends when you send the step-5 message, and nothing can wait — say
   exactly that in the step-5 message, as a headline, not a footnote:
-  setup is done, but no one is sitting in the seat, and requests will not
-  be answered until an agent runs `oh-seat next`. Never let the user
-  believe the API is being answered when it is not, and never present
-  `oh-seat next` as a command for the user to run in another terminal —
-  sitting here is the agent's job, which is yours.
+  setup is done, but no one is sitting in the seat, and requests will
+  wait unanswered (callers retrying or timing out) until an agent runs
+  `oh-seat next`. Never let the user believe the API is being answered
+  when it is not, and never present `oh-seat next` as a command for
+  the user to run in another terminal — sitting here is the agent's
+  job, which is yours.
 
 ## Options
 

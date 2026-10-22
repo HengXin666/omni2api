@@ -341,7 +341,7 @@ dependencies = [
 
 [[package]]
 name = "oh-seat"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "clap",
  "libc",

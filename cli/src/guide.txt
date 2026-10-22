@@ -26,6 +26,11 @@ THE LOOP
                                       that needs an earlier one (write + read)
   oh-seat reply 'Done.' --next        answer (ends the turn), then wait again
   Exit 2 from next = nothing yet: just run `oh-seat next` again.
+  SITTING: run next in the foreground — in most harnesses its return is
+  the only thing that wakes you. Backgrounding next and ending your turn
+  leaves the seat unmanned: a waiting process is not a seated agent.
+  Whenever you wake for any other reason, check `oh-seat status` for
+  open turns first; requests buffer server-side while you are away.
   First sight also prints `caller env:` (the caller's cwd, platform, shell,
   date) and any deferred tools (load with ToolSearch before calling).
   Relative path parameters (file_path=src/a.py, path=., filePath=...) are
