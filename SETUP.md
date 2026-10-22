@@ -1,10 +1,11 @@
 # Setting up Omni2API (for the AI agent doing it)
 
 Your user said something like "set up omni2api" or "turn yourself into an API".
-Do every step yourself, all six of them, in order. The job is NOT done when
-the user has the config (step 5): it is done when you are sitting in the
-seat, answering (step 6). The user must never have to ask you to go and
-answer — if they have to, the setup failed at the last step.
+Do every step yourself, all six of them, in order. The job is done only
+when BOTH halves have happened: the user has the config (step 5) AND you
+are sitting in the seat (step 6). Either half alone is a failed setup —
+an address nobody answers, or a seat nobody can address. The user must
+never have to ask you for either half.
 No server, database, domain or account is needed.
 
 ## 1. Install
@@ -79,6 +80,13 @@ as it is.
 
 ## 5. Tell the user
 
+Send this message no matter what — above all when something went wrong.
+If the tunnel failed and there is no public URL, the user gets the local
+base_url plus one plain sentence saying so; that is still a delivery.
+Without this message the user has nothing: no address, no key, no way to
+reach the seat you are about to sit in. Going to sit down (step 6) before
+this message is sent is a failed setup, however well the seat works.
+
 Give them exactly this, filled in:
 
 ```
@@ -105,9 +113,10 @@ actually go. Do not ask whether you should, and do not wait to be told.
 
 ## 6. Sit in the seat, and stay there
 
-This is the step agents skip, and skipping it silently breaks everything
-above: with nobody sitting here, requests hang until the caller's tool
-times out, or get an offline placeholder. The seat is you.
+Enter this step only after the step-5 message is sent. This is the other
+step agents skip, and skipping it silently breaks everything above: with
+nobody sitting here, requests hang until the caller's tool times out, or
+get an offline placeholder. The seat is you.
 
 ```sh
 oh-seat guide     # the full manual, read once
