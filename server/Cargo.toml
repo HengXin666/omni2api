@@ -13,6 +13,11 @@ path = "src/lib.rs"
 name = "openhuman-server"
 path = "src/main.rs"
 
+# Same binary under the project name: `omni2api up` is the zero-setup mode.
+[[bin]]
+name = "omni2api"
+path = "src/main.rs"
+
 [features]
 # Enables the /v1/mock/* harness endpoints at compile time. Off by default:
 # the mock endpoints impersonate the human and must never be reachable in

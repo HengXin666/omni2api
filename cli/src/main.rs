@@ -54,14 +54,9 @@ struct Cli {
 
 #[derive(Args)]
 struct Global {
-    /// Server base URL
-    #[arg(
-        long,
-        env = "OH_SEAT_URL",
-        default_value = "https://api.juwanh.com",
-        global = true
-    )]
-    url: String,
+    /// Server base URL. Default: the local `omni2api up` (~/.omni2api/endpoint.json)
+    #[arg(long, env = "OH_SEAT_URL", global = true)]
+    url: Option<String>,
     /// Responder API key (prefer OH_SEAT_KEY_FILE so it stays out of your history)
     #[arg(long, env = "OH_SEAT_KEY", hide_env_values = true, global = true)]
     key: Option<String>,
@@ -285,10 +280,34 @@ struct Ctx {
     agent: ureq::Agent,
 }
 
+/// URL and responder key written by `omni2api up` (`~/.omni2api/endpoint.json`,
+/// or `$OMNI2API_HOME/endpoint.json`).
+fn omni2api_endpoint() -> Option<(String, String)> {
+    let dir = std::env::var("OMNI2API_HOME")
+        .ok()
+        .filter(|h| !h.trim().is_empty())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home().join(".omni2api"));
+    let v: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("endpoint.json")).ok()?).ok()?;
+    let url = v["seat"]["OH_SEAT_URL"].as_str()?.to_string();
+    let key = v["responder_key"].as_str()?.to_string();
+    Some((url, key))
+}
+
 impl Ctx {
     fn new(g: Global) -> R<Ctx> {
+        let local = omni2api_endpoint();
+        let url = g
+            .url
+            .filter(|u| !u.trim().is_empty())
+            .or_else(|| local.as_ref().map(|(u, _)| u.clone()))
+            .unwrap_or_else(|| "http://127.0.0.1:8080".to_string());
         let key = match g.key.filter(|k| !k.trim().is_empty()) {
             Some(k) => k.trim().to_string(),
+            None if g.key_file.is_none() && local.is_some() => {
+                local.as_ref().map(|(_, k)| k.clone()).unwrap_or_default()
+            }
             None => {
                 let path = g
                     .key_file
@@ -297,7 +316,7 @@ impl Ctx {
                     Fail(
                         USAGE,
                         format!(
-                            "no key: set OH_SEAT_KEY or OH_SEAT_KEY_FILE ({}: {e})",
+                            "no key: run `omni2api up` first, or set OH_SEAT_KEY / OH_SEAT_KEY_FILE ({}: {e})",
                             path.display()
                         ),
                     )
@@ -326,7 +345,7 @@ impl Ctx {
             .user_agent(UA)
             .build();
         Ok(Ctx {
-            url: g.url.trim_end_matches('/').to_string(),
+            url: url.trim().trim_end_matches('/').to_string(),
             key,
             state_path,
             st,

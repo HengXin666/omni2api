@@ -24,16 +24,27 @@ use tracing_subscriber::EnvFilter;
 async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
 
+    let args: Vec<String> = std::env::args().collect();
+    // `up` is for a person or an agent at a terminal: only warnings, so the
+    // printed endpoint block stays readable.
+    let default_level = if args.get(1).map(|s| s.as_str()) == Some("up") {
+        "warn"
+    } else {
+        "info"
+    };
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_level)),
         )
         .init();
 
     // Admin: `openhuman-server issue-key ...` mints a key and exits.
-    let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(|s| s.as_str()) == Some("issue-key") {
         return issue_key(&args[2..]).await;
+    }
+    // Zero-setup mode: in-memory, keys minted, public tunnel. See quick.rs.
+    if args.get(1).map(|s| s.as_str()) == Some("up") {
+        return openhuman_server::quick::run_up(&args[2..]).await;
     }
 
     // Only tokenizers that load can be chosen; a default naming anything
