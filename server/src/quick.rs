@@ -341,6 +341,27 @@ pub fn start_tunnel(
     Ok((child, url))
 }
 
+/// A fresh quick-tunnel hostname takes a few seconds to resolve and route.
+/// Hand out the URL only once a request through it gets an answer.
+async fn wait_reachable(public: &str, caller_key: &str) -> bool {
+    let Ok(client) = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+    else {
+        return false;
+    };
+    let url = format!("{}/v1/models", public.trim_end_matches('/'));
+    for _ in 0..30 {
+        if let Ok(r) = client.get(&url).bearer_auth(caller_key).send().await {
+            if r.status().is_success() {
+                return true;
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+    false
+}
+
 /// What `endpoint.json` holds and `up` prints.
 pub fn endpoint_json(local: &str, public: Option<&str>, keys: &Keys) -> serde_json::Value {
     let base = |u: &str| format!("{}/v1", u.trim_end_matches('/'));
@@ -417,7 +438,7 @@ fn detach(args: &[String], dir: &Path) -> anyhow::Result<()> {
     }
     let child = cmd.spawn()?;
     std::fs::write(dir.join("up.pid"), child.id().to_string())?;
-    for _ in 0..180 {
+    for _ in 0..360 {
         std::thread::sleep(Duration::from_millis(500));
         if let Some(info) = std::fs::read_to_string(&endpoint)
             .ok()
@@ -578,6 +599,11 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
         }
     }
 
+    if let Some(url) = public.as_deref() {
+        if !wait_reachable(url, &keys.caller_key).await {
+            eprintln!("omni2api: {url} is not answering yet; it usually does within a minute");
+        }
+    }
     let info = endpoint_json(&local, public.as_deref(), &keys);
     write_private(
         &dir.join("endpoint.json"),
