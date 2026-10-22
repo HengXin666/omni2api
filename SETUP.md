@@ -33,8 +33,10 @@ It runs in the background, survives your shell, and prints (plain `omni2api up`
 detaches the same way when there is no terminal, so it never hangs a shell tool):
 
 - `base_url (local)` — `http://127.0.0.1:8080/v1`
-- `base_url (public)` — `https://<random>.trycloudflare.com/v1`, reachable from anywhere
-  (cloudflared is downloaded automatically on first run)
+- `base_url (public)` — an `https://…/v1` address reachable from anywhere. It
+  tries a Cloudflare quick tunnel first (cloudflared is downloaded on first
+  run), then localhost.run and pinggy through the system `ssh` if Cloudflare
+  is unreachable.
 - `api_key` — the caller key
 - `model` — `openhuman-human`
 
@@ -90,5 +92,18 @@ The API answers only while something keeps running `oh-seat next`.
 
 - `omni2api up` (foreground) shows tunnel errors directly; the background
   log is `~/.omni2api/up.log`.
-- No public URL: outbound access to Cloudflare is blocked; the local URL still works.
+- `note:` under the public URL, or no public URL at all: the network this
+  machine is on filters outbound traffic (common in agent sandboxes and
+  company networks: an egress proxy answering 403 for trycloudflare.com).
+  That is the machine, not omni2api. Options, best first:
+  1. Run `omni2api up` on a machine with normal internet access (the user's
+     own computer). The seat can stay where you are only if your network lets
+     you reach that machine's URL; otherwise sit in the seat on that machine too.
+  2. `--tunnel localhost.run` or `--tunnel pinggy` (ssh on port 22 / 443),
+     if your filter allows those.
+  3. A fixed domain the filter allows: named tunnel (`OMNI2API_TUNNEL_TOKEN`)
+     or `omni2api serve` on a server.
+  A URL marked unverified may still work from outside: the check runs from
+  this same filtered machine. Ask the user to open `<public base_url>/models` in a
+  browser: any JSON answer, even 401, means it is reachable.
 - 401: wrong key. Callers use `caller_key`, the seat uses `responder_key`.

@@ -37,7 +37,7 @@ omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatib
   omni2api status    show the running endpoint
   omni2api down      stop the background one
 
-  up options: --port N (8080)  --no-tunnel  --tunnel quick|none|token  --name \"Seat name\"
+  up options: --port N (8080)  --no-tunnel  --tunnel auto|cloudflare|localhost.run|pinggy|token|none  --name \"Seat name\"
   named tunnel (fixed domain): OMNI2API_TUNNEL_TOKEN=... OMNI2API_PUBLIC_URL=https://api.example.com
   state: ~/.omni2api (keys.json, endpoint.json, up.log); OMNI2API_HOME overrides
 
@@ -50,7 +50,8 @@ Advanced: `omni2api serve` runs the full server (OPENHUMAN_BACKEND=postgres for 
 pub struct UpOptions {
     pub port: u16,
     pub host: String,
-    /// `quick` (default), `none`, or `token` (named tunnel, needs
+    /// `auto` (default: cloudflare, then localhost.run, then pinggy),
+    /// one of those, `none`, or `token` (named Cloudflare tunnel, needs
     /// `OMNI2API_TUNNEL_TOKEN` and `OMNI2API_PUBLIC_URL`).
     pub tunnel: String,
     pub name: String,
@@ -71,7 +72,7 @@ impl UpOptions {
         } else if env("OMNI2API_TUNNEL_TOKEN").is_some() {
             "token".to_string()
         } else {
-            "quick".to_string()
+            "auto".to_string()
         };
         Self {
             port: get("--port")
@@ -363,6 +364,147 @@ async fn wait_reachable(public: &str, caller_key: &str) -> bool {
     false
 }
 
+/// Providers tried by `--tunnel auto`, in order.
+const AUTO: [&str; 3] = ["cloudflare", "localhost.run", "pinggy"];
+
+/// Open a public tunnel. Returns (children to kill, url, provider, verified).
+/// `auto` tries each provider; a URL that answers a request wins, otherwise
+/// the first URL obtained is kept unverified (this machine's own egress may
+/// be what blocks the check).
+async fn open_tunnel(
+    opts: &UpOptions,
+    dir: &Path,
+    local: &str,
+    caller_key: &str,
+) -> (Vec<Child>, Option<String>, Option<String>, bool) {
+    let list: Vec<&str> = match opts.tunnel.as_str() {
+        "none" => return (Vec::new(), None, None, false),
+        "auto" => AUTO.to_vec(),
+        "quick" | "cloudflared" => vec!["cloudflare"],
+        other => vec![other],
+    };
+    let mut children = Vec::new();
+    let mut fallback: Option<(String, String)> = None;
+    for provider in list {
+        let started = match provider {
+            "cloudflare" | "token" => match ensure_cloudflared(dir).await {
+                Ok(cf) => start_tunnel(&cf, opts, local),
+                Err(e) => Err(e),
+            },
+            "localhost.run" | "pinggy" => start_ssh_tunnel(provider, local),
+            other => Err(anyhow::anyhow!(
+                "unknown tunnel {other:?} (auto, cloudflare, localhost.run, pinggy, token, none)"
+            )),
+        };
+        match started {
+            Ok((child, Some(url))) => {
+                children.push(child);
+                if wait_reachable(&url, caller_key).await {
+                    return (children, Some(url), Some(provider.to_string()), true);
+                }
+                eprintln!("omni2api: {provider}: {url} does not answer from this machine");
+                fallback.get_or_insert((url, provider.to_string()));
+            }
+            Ok((mut child, None)) => {
+                eprintln!("omni2api: {provider}: no public URL");
+                if provider == "token" {
+                    children.push(child);
+                } else {
+                    let _ = child.kill();
+                }
+            }
+            Err(e) => eprintln!("omni2api: {provider}: {e}"),
+        }
+    }
+    match fallback {
+        Some((url, p)) => (children, Some(url), Some(p), false),
+        None => (children, None, None, false),
+    }
+}
+
+/// localhost.run (port 22) or pinggy (port 443) through the system `ssh`;
+/// no account, no binary to download.
+fn start_ssh_tunnel(provider: &str, local: &str) -> anyhow::Result<(Child, Option<String>)> {
+    let ssh = on_path("ssh").ok_or_else(|| anyhow::anyhow!("no ssh client on PATH"))?;
+    let port = local.rsplit(':').next().unwrap_or("8080");
+    let mut cmd = Command::new(ssh);
+    cmd.args([
+        "-T",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "ServerAliveInterval=30",
+        "-o",
+        "ExitOnForwardFailure=yes",
+        "-o",
+        "ConnectTimeout=15",
+    ]);
+    #[cfg(unix)]
+    cmd.args(["-o", "UserKnownHostsFile=/dev/null"]);
+    #[cfg(windows)]
+    cmd.args(["-o", "UserKnownHostsFile=NUL"]);
+    match provider {
+        "localhost.run" => cmd.args(["-R", &format!("80:127.0.0.1:{port}"), "nokey@localhost.run"]),
+        _ => cmd.args([
+            "-p",
+            "443",
+            "-R",
+            &format!("0:127.0.0.1:{port}"),
+            "a.pinggy.io",
+        ]),
+    };
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    for stream in [
+        child
+            .stdout
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        child
+            .stderr
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stream).lines().map_while(Result::ok) {
+                if let Some(u) = find_ssh_url(&line) {
+                    let _ = tx.send(u);
+                }
+            }
+        });
+    }
+    let url = rx.recv_timeout(Duration::from_secs(30)).ok();
+    Ok((child, url))
+}
+
+/// The public https URL in localhost.run / pinggy output.
+pub fn find_ssh_url(line: &str) -> Option<String> {
+    line.split(|c: char| c.is_whitespace() || c == ',')
+        .map(|w| w.trim_matches(|c: char| c == '"' || c == '\'' || c == '|'))
+        .filter(|w| w.starts_with("https://"))
+        .find(|w| {
+            let host = w
+                .trim_start_matches("https://")
+                .split('/')
+                .next()
+                .unwrap_or("");
+            (host.ends_with(".lhr.life")
+                || host.ends_with(".localhost.run")
+                || host.contains("pinggy"))
+                && !host.starts_with("dashboard.")
+                && !host.starts_with("admin.")
+        })
+        .map(|w| w.trim_end_matches('/').to_string())
+}
+
 /// What `endpoint.json` holds and `up` prints.
 pub fn endpoint_json(local: &str, public: Option<&str>, keys: &Keys) -> serde_json::Value {
     let base = |u: &str| format!("{}/v1", u.trim_end_matches('/'));
@@ -389,6 +531,9 @@ pub fn print_banner(info: &serde_json::Value) {
     println!("    base_url  (public) {}", s("public_base_url"));
     println!("    api_key            {}", s("caller_key"));
     println!("    model              {}", s("model"));
+    if let Some(note) = info["public_note"].as_str() {
+        println!("    note: {note}");
+    }
     println!();
     println!("  Seat (the thing that answers) — run in another terminal:");
     println!(
@@ -590,30 +735,24 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     let local = format!("http://127.0.0.1:{port}");
     let server = tokio::spawn(async move { axum::serve(listener, app).await });
 
-    let mut tunnel_child = None;
-    let mut public = None;
-    if opts.tunnel != "none" {
-        match ensure_cloudflared(&dir).await {
-            Ok(cf) => match start_tunnel(&cf, &opts, &local) {
-                Ok((child, url)) => {
-                    if url.is_none() {
-                        eprintln!("omni2api: tunnel started but no public URL yet");
-                    }
-                    tunnel_child = Some(child);
-                    public = url;
-                }
-                Err(e) => eprintln!("omni2api: tunnel failed: {e} (local API still works)"),
-            },
-            Err(e) => eprintln!("omni2api: no cloudflared: {e} (local API still works)"),
-        }
+    let (tunnel_children, public, provider, verified) =
+        open_tunnel(&opts, &dir, &local, &keys.caller_key).await;
+    let mut info = endpoint_json(&local, public.as_deref(), &keys);
+    info["tunnel"] = serde_json::json!(provider);
+    if provider.as_deref() == Some("pinggy") {
+        info["public_note"] = serde_json::json!(
+            "pinggy free tunnels expire after 60 minutes; run `omni2api up` again for a new URL"
+        );
     }
-
-    if let Some(url) = public.as_deref() {
-        if !wait_reachable(url, &keys.caller_key).await {
-            eprintln!("omni2api: {url} is not answering yet; it usually does within a minute");
-        }
+    if public.is_some() && !verified {
+        info["public_note"] = serde_json::json!(
+            "this machine could not reach its own public URL (an outbound filter on this network?); it may still work from elsewhere: test it from another network"
+        );
+    } else if public.is_none() && opts.tunnel != "none" {
+        info["public_note"] = serde_json::json!(
+            "no tunnel could be opened from this machine (outbound traffic to Cloudflare, localhost.run and pinggy blocked?). The local URL works; for a public one run omni2api on a machine with normal internet access, or use a named tunnel / your own server"
+        );
     }
-    let info = endpoint_json(&local, public.as_deref(), &keys);
     write_private(
         &dir.join("endpoint.json"),
         &serde_json::to_string_pretty(&info)?,
@@ -624,7 +763,7 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
         r = server => r.map_err(anyhow::Error::from).and_then(|r| r.map_err(anyhow::Error::from)),
         _ = shutdown_signal() => Ok(()),
     };
-    if let Some(mut c) = tunnel_child {
+    for mut c in tunnel_children {
         let _ = c.kill();
     }
     res
@@ -645,6 +784,28 @@ mod tests {
             find_quick_url("INF see https://www.cloudflare.com/website-terms/"),
             None
         );
+    }
+
+    #[test]
+    fn finds_ssh_tunnel_urls() {
+        assert_eq!(
+            find_ssh_url("abc123.lhr.life tunneled with tls termination, https://abc123.lhr.life")
+                .as_deref(),
+            Some("https://abc123.lhr.life")
+        );
+        assert_eq!(
+            find_ssh_url("https://acifd-129-225-183-175.free.pinggy.net\r").as_deref(),
+            Some("https://acifd-129-225-183-175.free.pinggy.net")
+        );
+        assert_eq!(
+            find_ssh_url("https://hcdxe-1-2-3-4.run.pinggy-free.link").as_deref(),
+            Some("https://hcdxe-1-2-3-4.run.pinggy-free.link")
+        );
+        assert_eq!(
+            find_ssh_url("visit https://dashboard.pinggy.io for more"),
+            None
+        );
+        assert_eq!(find_ssh_url("https://localhost.run/docs/faq"), None);
     }
 
     #[test]
