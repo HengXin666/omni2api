@@ -3,7 +3,7 @@
 > **Status: Design Spec — Not yet implemented**
 >
 > OpenAI's Responses API is the newer interface. This document describes how
-> OpenHuman will map to it when implemented.
+> Omni2API will map to it when implemented.
 
 ---
 
@@ -13,7 +13,7 @@ The OpenAI Responses API (`POST /v1/responses`) is a stateful alternative to
 Chat Completions. It uses a different request/response shape but the same
 underlying concept: send input, receive streamed or JSON output.
 
-OpenHuman will support this endpoint with the same internal model.
+Omni2API will support this endpoint with the same internal model.
 
 ---
 
@@ -50,12 +50,12 @@ Content-Type: application/json
 
 Unlike Chat Completions (where the agent sends full history each time),
 the Responses API uses `previous_response_id` for stateful continuation.
-OpenHuman maps this to its internal `conversation_id`:
+Omni2API maps this to its internal `conversation_id`:
 
 ```
 Agent sends input, gets response_id = "resp_0189xyz"
 Agent sends next input with previous_response_id = "resp_0189xyz"
-OpenHuman resolves: same conversation, new message
+Omni2API resolves: same conversation, new message
 ```
 
 The `response_id` encodes: `resp_` + `conversation_id` + `:` + `turn_number`.
@@ -71,7 +71,7 @@ The `response_id` encodes: `resp_` + `conversation_id` + `:` + `turn_number`.
   "id": "resp_0189abc123",
   "object": "response",
   "created_at": "2025-01-15T09:30:00Z",
-  "model": "openhuman-human",
+  "model": "omni2api",
   "status": "completed",
   "output": [
     {

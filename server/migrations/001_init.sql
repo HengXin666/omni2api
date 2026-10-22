@@ -1,4 +1,4 @@
--- OpenHuman — Initial Schema Migration
+-- Omni2API — Initial Schema Migration
 -- Based on: protocol/examples/02-internal-storage.md
 --
 -- Tables:

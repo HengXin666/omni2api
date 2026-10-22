@@ -1,4 +1,4 @@
-# OpenHuman Protocol Specification
+# Omni2API Protocol Specification
 
 ## Version
 
@@ -43,7 +43,7 @@ On success, the server sends a `session.connected` event. On failure, the connec
 
 ## Event Envelope (Server → Client)
 
-All server events share the `OpenHumanEvent` envelope:
+All server events share the `Omni2APIEvent` envelope:
 
 ```json
 {
@@ -216,9 +216,9 @@ Request headers that change ingress behaviour:
 
 | Header | Effect |
 |---|---|
-| `X-OpenHuman-Mode: async` | Return `202` immediately instead of waiting for a reply |
-| `X-OpenHuman-Conversation-Id` | Session key for conversation isolation |
-| `X-OpenHuman-Session-Id` | Lower-priority session key |
+| `X-Omni2api-Mode: async` | Return `202` immediately instead of waiting for a reply |
+| `X-Omni2api-Conversation-Id` | Session key for conversation isolation |
+| `X-Omni2api-Session-Id` | Lower-priority session key |
 
 ## ContentBlock Union
 

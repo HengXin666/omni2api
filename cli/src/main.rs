@@ -1,4 +1,4 @@
-//! oh-seat — sit in the OpenHuman responder seat from any terminal.
+//! oh-seat — sit in the Omni2API responder seat from any terminal.
 //!
 //! Built for AI agents that drive a shell one command at a time:
 //! one command = one complete step, short structured output, state kept in
@@ -42,7 +42,7 @@ const GUIDE: &str = include_str!("guide.txt");
 #[command(
     name = "oh-seat",
     version,
-    about = "OpenHuman Agent Seat: answer callers (Claude Code, Codex, ...) and run tools on their side",
+    about = "Omni2API Agent Seat: answer callers (Claude Code, Codex, ...) and run tools on their side",
     after_help = "Start with `oh-seat guide` (one screen, everything you need).\n\nExit codes: 0 ok, 1 tool reported an error, 2 nothing new before --timeout, 3 network/auth/server, 4 usage (unknown tool/parameter/conversation), 5 no open turn."
 )]
 struct Cli {
@@ -60,10 +60,10 @@ struct Global {
     /// Responder API key (prefer OH_SEAT_KEY_FILE so it stays out of your history)
     #[arg(long, env = "OH_SEAT_KEY", hide_env_values = true, global = true)]
     key: Option<String>,
-    /// File holding the key (a bare ohk_... or an `api_key=ohk_...` line). Default ~/.openhuman/seat_key
+    /// File holding the key (a bare ohk_... or an `api_key=ohk_...` line). Default ~/.omni2api/seat_key
     #[arg(long, env = "OH_SEAT_KEY_FILE", global = true)]
     key_file: Option<PathBuf>,
-    /// State file (cursor, active conversation, buffered events). Default ~/.openhuman/seat-state.json
+    /// State file (cursor, active conversation, buffered events). Default ~/.omni2api/seat-state.json
     #[arg(long, env = "OH_SEAT_STATE", global = true)]
     state: Option<PathBuf>,
     /// One JSON object per line instead of text
@@ -176,6 +176,12 @@ enum Cmd {
         #[arg(long, short = 'c')]
         conv: Option<String>,
     },
+    /// The model name you answer to: show it, or set your own
+    /// (a name the user pinned at `omni2api up --model …` cannot be changed)
+    Name {
+        /// The name to answer to; omit to show the current one
+        name: Option<String>,
+    },
     /// Show URL, consumer, cursor, active conversation, open turns
     Status,
     /// Everything you need on one screen: the loop, input rules, exit codes
@@ -280,19 +286,47 @@ struct Ctx {
     agent: ureq::Agent,
 }
 
-/// URL and responder key written by `omni2api up` (`~/.omni2api/endpoint.json`,
-/// or `$OMNI2API_HOME/endpoint.json`).
-fn omni2api_endpoint() -> Option<(String, String)> {
-    let dir = std::env::var("OMNI2API_HOME")
+/// `~/.omni2api` (or `$OMNI2API_HOME`).
+fn omni2api_home() -> PathBuf {
+    std::env::var("OMNI2API_HOME")
         .ok()
         .filter(|h| !h.trim().is_empty())
         .map(PathBuf::from)
-        .unwrap_or_else(|| home().join(".omni2api"));
+        .unwrap_or_else(|| home().join(".omni2api"))
+}
+
+/// URL and responder key written by `omni2api up` (`~/.omni2api/endpoint.json`,
+/// or `$OMNI2API_HOME/endpoint.json`).
+fn omni2api_endpoint() -> Option<(String, String)> {
+    let dir = omni2api_home();
     let v: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(dir.join("endpoint.json")).ok()?).ok()?;
     let url = v["seat"]["OH_SEAT_URL"].as_str()?.to_string();
     let key = v["responder_key"].as_str()?.to_string();
     Some((url, key))
+}
+
+/// After a successful rename, keep the local `endpoint.json` honest: it is
+/// what `omni2api status` prints and what setup guides hand to the user.
+/// Only touches the file when it describes this very endpoint (same seat
+/// URL and responder key); best-effort — the server already renamed.
+fn sync_endpoint_model(cx: &Ctx, model: &str) {
+    let path = omni2api_home().join("endpoint.json");
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return;
+    };
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return;
+    };
+    if v["responder_key"].as_str() != Some(cx.key.as_str())
+        || v["seat"]["OH_SEAT_URL"].as_str() != Some(cx.url.as_str())
+    {
+        return;
+    }
+    v["model"] = serde_json::Value::String(model.to_string());
+    if let Ok(pretty) = serde_json::to_string_pretty(&v) {
+        let _ = std::fs::write(&path, pretty);
+    }
 }
 
 impl Ctx {
@@ -311,7 +345,7 @@ impl Ctx {
             None => {
                 let path = g
                     .key_file
-                    .unwrap_or_else(|| home().join(".openhuman").join("seat_key"));
+                    .unwrap_or_else(|| home().join(".omni2api").join("seat_key"));
                 let txt = std::fs::read_to_string(&path).map_err(|e| {
                     Fail(
                         USAGE,
@@ -331,7 +365,7 @@ impl Ctx {
         };
         let state_path = g
             .state
-            .unwrap_or_else(|| home().join(".openhuman").join("seat-state.json"));
+            .unwrap_or_else(|| home().join(".omni2api").join("seat-state.json"));
         let mut st: State = std::fs::read_to_string(&state_path)
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
@@ -382,7 +416,7 @@ impl Ctx {
         else {
             return Vec::new();
         };
-        let dir = home().join(".openhuman").join("images");
+        let dir = home().join(".omni2api").join("images");
         let _ = std::fs::create_dir_all(&dir);
         let mut out = Vec::new();
         for (i, img) in m["images"].as_array().into_iter().flatten().enumerate() {
@@ -738,7 +772,7 @@ fn cap_output(body: String, id: &str) -> String {
     if n <= max {
         return body;
     }
-    let dir = home().join(".openhuman").join("results");
+    let dir = home().join(".omni2api").join("results");
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join(format!("{}.txt", id.replace(['/', '\\', '.'], "_")));
     let saved = std::fs::write(&path, &body).is_ok();
@@ -755,7 +789,7 @@ fn cap_output(body: String, id: &str) -> String {
     )
 }
 
-/// Pictures a tool returned (data URLs saved under ~/.openhuman/images,
+/// Pictures a tool returned (data URLs saved under ~/.omni2api/images,
 /// links kept as they are).
 fn save_result_images(e: &Value) -> Vec<String> {
     let Some(imgs) = e.get("images").and_then(|v| v.as_array()) else {
@@ -764,7 +798,7 @@ fn save_result_images(e: &Value) -> Vec<String> {
     let id = s(e, "invocation_id")
         .unwrap_or("result")
         .replace(['/', '\\', '.'], "_");
-    let dir = home().join(".openhuman").join("images");
+    let dir = home().join(".omni2api").join("images");
     let _ = std::fs::create_dir_all(&dir);
     let mut out = Vec::new();
     for (i, url) in imgs.iter().filter_map(|v| v.as_str()).enumerate() {
@@ -2439,6 +2473,38 @@ fn run(cli: Cli) -> R<u8> {
                 cx.out(&r);
             } else {
                 println!("saved conv={c}");
+            }
+            Ok(OK)
+        }
+        Cmd::Name { name } => {
+            let r = match &name {
+                Some(n) => cx.call(
+                    "POST",
+                    "/v1/seat/model-name",
+                    Some(json!({ "name": n })),
+                    60,
+                )?,
+                None => cx.call("GET", "/v1/seat/model-name", None, 60)?,
+            };
+            if name.is_some() {
+                if let Some(m) = r["model"].as_str() {
+                    sync_endpoint_model(&cx, m);
+                }
+            }
+            if cx.json {
+                cx.out(&r);
+            } else if name.is_some() {
+                println!("model: {}", r["model"].as_str().unwrap_or("?"));
+            } else if r["locked"].as_bool() == Some(true) {
+                println!(
+                    "model: {} (pinned by the user; the seat cannot change it)",
+                    r["model"].as_str().unwrap_or("?")
+                );
+            } else {
+                println!(
+                    "model: {} (yours to choose: oh-seat name <name>)",
+                    r["model"].as_str().unwrap_or("?")
+                );
             }
             Ok(OK)
         }

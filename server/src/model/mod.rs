@@ -1,6 +1,6 @@
 //! Internal Data Model — Protocol-level types.
 //!
-//! These types implement the OpenHuman internal model defined in
+//! These types implement the Omni2API internal model defined in
 //! `protocol/internal-model/`. They are role-neutral: the internal
 //! model never stores OpenAI `role: user` / `role: assistant`.
 //! Role mapping happens only at the `openai_compat` boundary.

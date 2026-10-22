@@ -1,7 +1,7 @@
 # wordstat, written from the human seat
 
 Claude Code was the *caller* here: it thought it was talking to a model named
-`openhuman-human`. Behind that model sat another AI in the OpenHuman human
+`omni2api`. Behind that model sat another AI in the Omni2API human
 seat, doing the work with `oh-seat` and nothing else. No human touched it.
 
 Two turns, as Claude Code sent them:

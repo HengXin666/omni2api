@@ -1,6 +1,6 @@
 # OpenAI Compatibility: Chat Completions API
 
-This document specifies how OpenHuman maps its internal data model to the
+This document specifies how Omni2API maps its internal data model to the
 **OpenAI Chat Completions API** (`POST /v1/chat/completions`).
 
 ---
@@ -10,11 +10,11 @@ This document specifies how OpenHuman maps its internal data model to the
 An agent (Codex, Claude Code, Trae, custom) configures:
 
 ```
-Base URL:  https://api.openhuman.dev/v1
+Base URL:  https://api.omni2api.dev/v1
 API Key:   ohk_live_xxxxxxxxxxxx
 ```
 
-The agent sends a standard OpenAI Chat Completions request. OpenHuman:
+The agent sends a standard OpenAI Chat Completions request. Omni2API:
 
 1. Authenticates the API Key → resolves `AgentIdentity`
 2. The API Key is bound to a specific `HumanIdentity` (the human endpoint)
@@ -25,7 +25,7 @@ The agent sends a standard OpenAI Chat Completions request. OpenHuman:
 7. Streams the human's response back as OpenAI SSE chunks
 
 ```
-Agent                    OpenHuman Server                  Human Client
+Agent                    Omni2API Server                  Human Client
   |                           |                                |
   |-- POST /v1/chat/completions -->                          |
   |    { messages: [...] }    |                                |
@@ -108,14 +108,14 @@ The human client can display this as conversation context (e.g., a banner:
 
 ### 3.1 Non-Streaming Response
 
-When the human replies and `stream: false` (or absent):
+When the responder replies and `stream: false` (or absent):
 
 ```json
 {
-  "id": "chatcmpl-openhuman-cnvtok123",
+  "id": "chatcmpl-omni2api-cnvtok123",
   "object": "chat.completion",
   "created": 1736936400,
-  "model": "openhuman-human",
+  "model": "omni2api",
   "choices": [
     {
       "index": 0,
@@ -138,26 +138,26 @@ When the human replies and `stream: false` (or absent):
 |---|---|
 | `id` | Generated `chatcmpl-` + token (correlates to conversation + message) |
 | `object` | Literal `"chat.completion"` |
-| `created` | Unix timestamp of human reply |
-| `model` | Literal `"openhuman-human"` (signals this is a human, not an LLM) |
-| `choices[0].message.role` | Always `"assistant"` (the API responder = human) |
-| `choices[0].message.content` | `Message.content.text` (from `HumanIdentity` sender) |
-| `choices[0].finish_reason` | `"stop"` when human finishes; `"length"` if truncated |
-| `usage.*` | All zeros (no tokens consumed; human is not an LLM) |
+| `created` | Unix timestamp of the reply |
+| `model` | The instance's current model name: the seat's chosen name, or the user-pinned name; `omni2api` until either is set |
+| `choices[0].message.role` | Always `"assistant"` |
+| `choices[0].message.content` | `Message.content.text` (from the responder) |
+| `choices[0].finish_reason` | `"stop"` when the responder finishes; `"length"` if truncated |
+| `usage.*` | Server-counted usage for the completion |
 
 ### 3.2 Streaming Response (SSE)
 
-When `stream: true`, the human's reply is streamed character-by-character (or
-chunk-by-chunk) as SSE:
+When `stream: true`, the responder's reply is streamed character-by-character
+(or chunk-by-chunk) as SSE:
 
 ```
-data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
+data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"The auth "},"finish_reason":null}]}
+data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"The auth "},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"middleware looks solid."},"finish_reason":null}]}
+data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"middleware looks solid."},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+data: {"id":"chatcmpl-xyz","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
 
 data: [DONE]
 ```
@@ -171,7 +171,7 @@ Each SSE `data:` line contains a JSON object:
 | `id` | Stable correlation ID for the entire completion |
 | `object` | `"chat.completion.chunk"` |
 | `created` | Unix timestamp |
-| `model` | `"openhuman-human"` |
+| `model` | The instance's current model name |
 | `choices[0].index` | Always `0` (single choice) |
 | `choices[0].delta.role` | `"assistant"` (first chunk only) |
 | `choices[0].delta.content` | Text fragment (subsequent chunks) |
@@ -179,8 +179,8 @@ Each SSE `data:` line contains a JSON object:
 
 ### 3.4 Keepalive
 
-While waiting for the human to respond (before the first content chunk),
-OpenHuman sends SSE comments as keepalive:
+While waiting for the responder to reply (before the first content chunk),
+Omni2API sends SSE comments as keepalive:
 
 ```
 : keepalive 1736936405
@@ -263,14 +263,14 @@ Errors follow the OpenAI error format:
 
 ## 6. Limitations & Clarifications
 
-| OpenAI feature | OpenHuman behavior |
+| OpenAI feature | Omni2API behavior |
 |---|---|
 | `temperature`, `top_p` | Ignored (human is not stochastic) |
 | `max_tokens` | Honored as character limit on human reply |
 | `stop` sequences | Not supported |
 | `logprobs` | Not supported |
 | `n` (multiple choices) | Always 1 (single human responder) |
-| `tools` / `functions` | Passed through to metadata; not executed by OpenHuman |
+| `tools` / `functions` | Passed through to metadata; not executed by Omni2API |
 | `response_format` | If `json_object`, human client renders a JSON input form |
 | `seed` | Ignored |
 
@@ -290,5 +290,5 @@ Reference: `server/src/api/openai.rs`, `server/src/normalize.rs`.
 - One conversation holds at most one open turn; a second concurrent
   request gets `409 turn_already_open`.
 - `stream: false` pads with `\n` keepalives and hands off to async mode on
-  timeout instead of dropping. `X-OpenHuman-Mode: async` returns `202` +
+  timeout instead of dropping. `X-Omni2api-Mode: async` returns `202` +
   `invocation_id`; the agent polls `GET /v1/replies/{id}`.

@@ -199,7 +199,7 @@ pub async fn messages(
     // message_delta; count them here with the same tokenizer the chat
     // pipeline uses.
     let tokenizer = headers
-        .get("x-openhuman-tokenizer")
+        .get("x-omni2api-tokenizer")
         .and_then(|v| v.to_str().ok())
         .map(|v| v.trim().to_string())
         .filter(|v| crate::session::tokenizer_available(v))
@@ -321,7 +321,7 @@ pub async fn count_tokens(
     Json(body): Json<Value>,
 ) -> Response {
     let tokenizer = headers
-        .get("x-openhuman-tokenizer")
+        .get("x-omni2api-tokenizer")
         .and_then(|v| v.to_str().ok())
         .map(|v| v.trim().to_string())
         .filter(|v| crate::session::tokenizer_available(v))
@@ -596,7 +596,7 @@ pub(crate) fn responses_to_chat(body: &Value) -> Value {
     }
 
     let mut out = json!({
-        "model": body.get("model").cloned().unwrap_or(json!("openhuman-human")),
+        "model": body.get("model").cloned().unwrap_or(json!("omni2api")),
         "messages": messages,
         "stream": body.get("stream").and_then(|v| v.as_bool()).unwrap_or(false),
     });
@@ -863,7 +863,7 @@ pub async fn responses(
     let model = body
         .get("model")
         .and_then(|v| v.as_str())
-        .unwrap_or("openhuman-human")
+        .unwrap_or("omni2api")
         .to_string();
     let stream = body
         .get("stream")

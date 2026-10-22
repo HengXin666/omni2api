@@ -97,7 +97,7 @@ Agent (initiator)  ↔  Human (responder)
 
 ### `human_human`
 
-A direct human-to-human conversation through the OpenHuman client. This is
+A direct human-to-human conversation through the Omni2API client. This is
 **not** routed through the OpenAI API; it uses the internal protocol directly.
 
 ```
@@ -105,7 +105,7 @@ Human A (initiator)  ↔  Human B (responder)
 ```
 
 > `agent_agent` is intentionally **not** supported. Agent-to-agent communication
-> should use existing MCP / A2A protocols, not OpenHuman.
+> should use existing MCP / A2A protocols, not Omni2API.
 
 ---
 
@@ -131,12 +131,12 @@ created → active → archived → closed
 In the OpenAI Chat Completions API, a "conversation" is implicit — it is the
 sequence of `messages[]` in the request body. There is no conversation ID.
 
-OpenHuman **creates or resolves** a conversation internally:
+Omni2API **creates or resolves** a conversation internally:
 
 1. Agent sends `POST /v1/chat/completions` with `messages[]`.
-2. OpenHuman checks the API key → resolves `AgentIdentity`.
+2. Omni2API checks the API key → resolves `AgentIdentity`.
 3. The API key is bound to a specific `HumanIdentity` (the human endpoint).
-4. OpenHuman finds or creates a conversation between this agent and human.
+4. Omni2API finds or creates a conversation between this agent and human.
 5. Messages are stored with `conversation_id` linking them together.
 
 The conversation ID is **never exposed** in the OpenAI-compatible API surface.
@@ -149,7 +149,7 @@ It is an internal correlation key. SDK clients (Flutter, Dart SDK) do see it.
     {"role": "user", "content": "Review this auth code"}
   ]
 }
-// ↓ OpenHuman internal
+// ↓ Omni2API internal
 {
   "conversation_id": "cnv_0189abc123def456",
   "participant_agent": "agt_0189def456",

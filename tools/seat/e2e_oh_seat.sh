@@ -1,7 +1,7 @@
 #!/bin/bash
 # e2e_oh_seat.sh — split-key end-to-end test of the oh-seat CLI.
 #
-#   OPENHUMAN_CALLER_KEY_FILE=... OPENHUMAN_SEAT_KEY_FILE=... OH_SEAT=path/to/oh-seat \
+#   OMNI2API_CALLER_KEY_FILE=... OMNI2API_SEAT_KEY_FILE=... OH_SEAT=path/to/oh-seat \
 #     tools/seat/e2e_oh_seat.sh [URL]
 #
 # A plain curl caller (caller-scope key) sends a chat request declaring one
@@ -11,9 +11,9 @@
 set -eu
 URL=${1:-https://api.juwanh.com}
 OHS=${OH_SEAT:-oh-seat}
-CK=$(grep -o 'ohk_[A-Za-z0-9_]*' "$OPENHUMAN_CALLER_KEY_FILE" | head -1)
+CK=$(grep -o 'ohk_[A-Za-z0-9_]*' "$OMNI2API_CALLER_KEY_FILE" | head -1)
 T=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null; rm -rf $T' EXIT
-export OH_SEAT_URL=$URL OH_SEAT_KEY_FILE=$OPENHUMAN_SEAT_KEY_FILE
+export OH_SEAT_URL=$URL OH_SEAT_KEY_FILE=$OMNI2API_SEAT_KEY_FILE
 A="$OHS --state $T/a.json"; B="$OHS --state $T/b.json"
 pass() { echo "PASS $*"; }; fail() { echo "FAIL $*"; exit 1; }
 
@@ -21,7 +21,7 @@ $A status >/dev/null && $B status >/dev/null || fail "seat key cannot read the i
 TAG=e2e-$RANDOM
 TOOLS='[{"type":"function","function":{"name":"shell","description":"run a command","parameters":{"type":"object","properties":{"cmd":{"type":"string"}},"required":["cmd"]}}}]'
 REQ1=$(jq -nc --arg t "say hi ($TAG)" --argjson tools "$TOOLS" \
-  '{model:"openhuman-human",messages:[{role:"system",content:"e2e"},{role:"user",content:$t}],tools:$tools}')
+  '{model:"omni2api",messages:[{role:"system",content:"e2e"},{role:"user",content:$t}],tools:$tools}')
 curl -s -A oh-seat-e2e -H "Authorization: Bearer $CK" -H 'Content-Type: application/json' \
   "$URL/v1/chat/completions" -d "$REQ1" > $T/r1.json &
 CURL=$!

@@ -36,16 +36,16 @@
 //! | `capability.manifest`   | Agent publishes its tool manifest     |
 //! | `tool.invoke`           | Human requests an agent tool invocation |
 //!
-//! # OpenHuman Native Extension Protocol (OPTIONAL)
+//! # Omni2API Native Extension Protocol (OPTIONAL)
 //!
 //! The `capability.manifest` and `tool.invoke` events are part of the
-//! **OpenHuman Native Extension Protocol** — a set of WebSocket events
+//! **Omni2API Native Extension Protocol** — a set of WebSocket events
 //! that provide enhanced functionality (push-based capability discovery,
 //! human-initiated tool calling) for agents that implement the
-//! OpenHuman SDK.
+//! Omni2API SDK.
 //!
 //! **These are NOT required for basic operation.** Any OpenAI-compatible
-//! agent can use OpenHuman with just `POST /v1/chat/completions` and a
+//! agent can use Omni2API with just `POST /v1/chat/completions` and a
 //! Bearer API key. The HTTP path (Phase 7.1.1) automatically extracts
 //! capabilities from the `tools[]` array in the request body.
 //!
@@ -279,7 +279,7 @@ pub enum ClientMessage {
     /// Agent publishes a capability manifest (tools + context).
     ///
     /// **Optional Native Extension**: This is sent by agents that connect
-    /// via WS using the OpenHuman SDK. The HTTP path (`POST /v1/chat/completions`)
+    /// via WS using the Omni2API SDK. The HTTP path (`POST /v1/chat/completions`)
     /// automatically extracts tools from the `tools[]` array — this event
     /// is NOT required for basic operation.
     ///
@@ -297,11 +297,11 @@ pub enum ClientMessage {
     ///
     /// **Optional Native Extension**: Human-initiated tool calling is
     /// deferred to Phase 8+. The standard OpenAI `tool_calls` response
-    /// path is used instead — the human (via OpenHuman) returns a
+    /// path is used instead — the human (via Omni2API) returns a
     /// `tool_calls` response, and the agent executes the tool and
     /// sends back a `role: "tool"` message in the next request.
     ///
-    /// OpenHuman does **not** execute the tool — it only transports the request.
+    /// Omni2API does **not** execute the tool — it only transports the request.
     #[serde(rename = "tool.invoke")]
     ToolInvoke {
         conversation_id: String,

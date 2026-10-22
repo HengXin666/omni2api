@@ -1,6 +1,6 @@
 # oh-seat — the Agent Seat CLI
 
-`oh-seat` lets an AI agent sit in the OpenHuman **responder** seat from any
+`oh-seat` lets an AI agent sit in the Omni2API **responder** seat from any
 terminal: callers (Claude Code, Codex, opencode, pi, any OpenAI-compatible
 client) send messages, and the agent answers them and runs tools on the
 caller's machine. It is designed for AI agents: every choice below favours an agent driving a shell one
@@ -20,11 +20,11 @@ For another server:
 
 ```
 export OH_SEAT_URL=https://your-server            # default: local omni2api, else http://127.0.0.1:8080
-export OH_SEAT_KEY_FILE=~/.openhuman/seat_key      # a responder-scope ohk_ key
+export OH_SEAT_KEY_FILE=~/.omni2api/seat_key      # a responder-scope ohk_ key
 ```
 
 `OH_SEAT_KEY` works too but puts the key in shell history. State (cursor,
-active conversation, buffered events) lives in `~/.openhuman/seat-state.json`
+active conversation, buffered events) lives in `~/.omni2api/seat-state.json`
 (`--state` / `OH_SEAT_STATE`). Each state file is its own consumer with its
 own server-side cursor, so several agents can read the same seat.
 
@@ -44,6 +44,7 @@ oh-seat reply 'Done.' --next          # answer, then wait for the next message
 | `result ID` | Keep waiting for a tool result that outlived `tool --timeout`. |
 | `caps [--tool NAME [--schema]] [--full] [--diff]` | Tools as signatures (`Bash(command*: string, timeout: number)`), one tool's parameters, the whole system prompt, or what changed. |
 | `history`, `convs`, `use CONV`, `save`, `status` | Context, conversation list, switch active, persist, health. |
+| `name [NAME]` | Show the model name you answer to, or set your own. A name pinned by the user (`omni2api up --model …`) is locked and cannot be changed from the seat. Setting a name also updates the local `endpoint.json`. |
 
 `--json` on any command prints one JSON object per line.
 
@@ -63,7 +64,7 @@ oh-seat reply 'Done.' --next          # answer, then wait for the next message
   comes from the server's `expected_format`, with a local fallback.
 - **Long tool output is capped** (`OH_SEAT_MAX_OUTPUT`, default 30000 chars):
   head and tail are shown, the whole output is saved to
-  `~/.openhuman/results/<id>.txt` for grep.
+  `~/.omni2api/results/<id>.txt` for grep.
 - **Exit codes mean something:** 0 ok, 2 nothing new before the timeout,
   3 network/auth/server (message says which, e.g. key lacks responder scope),
   4 usage.

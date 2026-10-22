@@ -26,7 +26,10 @@ use crate::storage::memory::MemoryStore;
 use crate::storage::traits::IdentityRepository;
 use crate::storage::AppState;
 
-pub const MODEL: &str = "openhuman-human";
+/// Model name served until the user pins one (`--model`) or the seat
+/// chooses its own (`oh-seat name …`). Deliberately neutral: the name
+/// belongs to whoever sits in the seat, not to this software.
+pub const DEFAULT_MODEL: &str = "omni2api";
 
 pub const USAGE: &str = "\
 omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatible API
@@ -37,12 +40,12 @@ omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatib
   omni2api status    show the running endpoint
   omni2api down      stop the background one
 
-  up options: --port N (8080)  --no-tunnel  --tunnel auto|cloudflare|localhost.run|pinggy|token|none  --name \"Seat name\"
+  up options: --port N (8080)  --no-tunnel  --tunnel auto|cloudflare|pinggy|token|none  --name \"Seat name\"  --model \"Model name\"
   named tunnel (fixed domain): OMNI2API_TUNNEL_TOKEN=... OMNI2API_PUBLIC_URL=https://api.example.com
   state: ~/.omni2api (keys.json, endpoint.json, up.log); OMNI2API_HOME overrides
 
 Then answer requests with the seat CLI: oh-seat guide
-Advanced: `omni2api serve` runs the full server (OPENHUMAN_BACKEND=postgres for a database).
+Advanced: `omni2api serve` runs the full server (OMNI2API_BACKEND=postgres for a database).
 ";
 
 /// Options for `omni2api up`, from flags and environment.
@@ -50,11 +53,14 @@ Advanced: `omni2api serve` runs the full server (OPENHUMAN_BACKEND=postgres for 
 pub struct UpOptions {
     pub port: u16,
     pub host: String,
-    /// `auto` (default: cloudflare, then localhost.run, then pinggy),
-    /// one of those, `none`, or `token` (named Cloudflare tunnel, needs
-    /// `OMNI2API_TUNNEL_TOKEN` and `OMNI2API_PUBLIC_URL`).
+    /// `auto` (default: cloudflare, then pinggy), one of those, `none`,
+    /// or `token` (named Cloudflare tunnel, needs `OMNI2API_TUNNEL_TOKEN`
+    /// and `OMNI2API_PUBLIC_URL`).
     pub tunnel: String,
     pub name: String,
+    /// Model name pinned by the user (`--model` / `OMNI2API_MODEL`).
+    /// Beats the seat's own choice; see `storage::ModelName`.
+    pub model: Option<String>,
 }
 
 impl UpOptions {
@@ -86,6 +92,10 @@ impl UpOptions {
             name: get("--name")
                 .or_else(|| env("OMNI2API_NAME"))
                 .unwrap_or_else(|| "Omni2API seat".into()),
+            model: get("--model")
+                .or_else(|| env("OMNI2API_MODEL"))
+                .filter(|m| crate::storage::is_valid_model_name(m.trim()))
+                .map(|m| m.trim().to_string()),
         }
     }
 }
@@ -152,7 +162,9 @@ fn write_private(path: &Path, body: &str) -> anyhow::Result<()> {
 }
 
 /// In-memory state holding one human seat, a caller key and a responder key.
-pub async fn build_state(keys: &Keys, name: &str) -> AppState {
+/// `model` is the user-pinned model name (`--model`); it beats both the
+/// environment default and any name the seat later chooses for itself.
+pub async fn build_state(keys: &Keys, name: &str, model: Option<&str>) -> AppState {
     let store = MemoryStore::new();
     let now = chrono::Utc::now();
     let human_id = "hum_local".to_string();
@@ -198,7 +210,11 @@ pub async fn build_state(keys: &Keys, name: &str) -> AppState {
             .insert_api_key(ApiKey::new(key_id, raw, agent, &human_id).with_scope(scope))
             .await;
     }
-    AppState::from_store(store)
+    let state = AppState::from_store(store);
+    if let Some(m) = model {
+        state.model.set_user(m);
+    }
+    state
 }
 
 /// The cloudflared asset for this platform on its GitHub releases page.
@@ -382,7 +398,7 @@ async fn wait_reachable(public: &str, caller_key: &str) -> bool {
 }
 
 /// Providers tried by `--tunnel auto`, in order.
-const AUTO: [&str; 3] = ["cloudflare", "localhost.run", "pinggy"];
+const AUTO: [&str; 2] = ["cloudflare", "pinggy"];
 
 /// Open a public tunnel. Returns (children to kill, url, provider, verified).
 /// `auto` tries each provider; a URL that answers a request wins, otherwise
@@ -408,9 +424,9 @@ async fn open_tunnel(
                 Ok(cf) => start_tunnel(&cf, opts, local),
                 Err(e) => Err(e),
             },
-            "localhost.run" | "pinggy" => start_ssh_tunnel(provider, local),
+            "pinggy" => start_ssh_tunnel(provider, local),
             other => Err(anyhow::anyhow!(
-                "unknown tunnel {other:?} (auto, cloudflare, localhost.run, pinggy, token, none)"
+                "unknown tunnel {other:?} (auto, cloudflare, pinggy, token, none)"
             )),
         };
         match started {
@@ -466,8 +482,8 @@ fn tunnel_log(provider: &str) -> Option<std::fs::File> {
         .ok()
 }
 
-/// localhost.run (port 22) or pinggy (port 443) through the system `ssh`;
-/// no account, no binary to download.
+/// pinggy (port 443) through the system `ssh`; no account, no binary to
+/// download.
 fn start_ssh_tunnel(provider: &str, local: &str) -> anyhow::Result<(Child, Option<String>)> {
     let ssh = on_path("ssh").ok_or_else(|| anyhow::anyhow!("no ssh client on PATH"))?;
     let port = local.rsplit(':').next().unwrap_or("8080");
@@ -487,16 +503,13 @@ fn start_ssh_tunnel(provider: &str, local: &str) -> anyhow::Result<(Child, Optio
     cmd.args(["-o", "UserKnownHostsFile=/dev/null"]);
     #[cfg(windows)]
     cmd.args(["-o", "UserKnownHostsFile=NUL"]);
-    match provider {
-        "localhost.run" => cmd.args(["-R", &format!("80:127.0.0.1:{port}"), "nokey@localhost.run"]),
-        _ => cmd.args([
-            "-p",
-            "443",
-            "-R",
-            &format!("0:127.0.0.1:{port}"),
-            "a.pinggy.io",
-        ]),
-    };
+    cmd.args([
+        "-p",
+        "443",
+        "-R",
+        &format!("0:127.0.0.1:{port}"),
+        "a.pinggy.io",
+    ]);
     let mut child = cmd
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -535,7 +548,7 @@ fn start_ssh_tunnel(provider: &str, local: &str) -> anyhow::Result<(Child, Optio
     Ok((child, url))
 }
 
-/// The public https URL in localhost.run / pinggy output.
+/// The public https URL in pinggy output.
 pub fn find_ssh_url(line: &str) -> Option<String> {
     line.split(|c: char| c.is_whitespace() || c == ',')
         .map(|w| w.trim_matches(|c: char| c == '"' || c == '\'' || c == '|'))
@@ -546,9 +559,7 @@ pub fn find_ssh_url(line: &str) -> Option<String> {
                 .split('/')
                 .next()
                 .unwrap_or("");
-            (host.ends_with(".lhr.life")
-                || host.ends_with(".localhost.run")
-                || host.contains("pinggy"))
+            host.contains("pinggy")
                 && !host.starts_with("dashboard.")
                 && !host.starts_with("admin.")
         })
@@ -556,10 +567,15 @@ pub fn find_ssh_url(line: &str) -> Option<String> {
 }
 
 /// What `endpoint.json` holds and `up` prints.
-pub fn endpoint_json(local: &str, public: Option<&str>, keys: &Keys) -> serde_json::Value {
+pub fn endpoint_json(
+    local: &str,
+    public: Option<&str>,
+    keys: &Keys,
+    model: &str,
+) -> serde_json::Value {
     let base = |u: &str| format!("{}/v1", u.trim_end_matches('/'));
     serde_json::json!({
-        "model": MODEL,
+        "model": model,
         "local_base_url": base(local),
         "public_base_url": public.map(base),
         "caller_key": keys.caller_key,
@@ -764,11 +780,12 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     }
     // Request dumps (observation.rs) are a debugging aid for the hosted
     // server; here they would litter whatever directory `up` started in.
-    if std::env::var_os("OPENHUMAN_OBSERVATION").is_none() {
-        std::env::set_var("OPENHUMAN_OBSERVATION", "off");
+    if std::env::var_os("OMNI2API_OBSERVATION").is_none() {
+        std::env::set_var("OMNI2API_OBSERVATION", "off");
     }
     let keys = load_or_mint_keys(&dir)?;
-    let state = build_state(&keys, &opts.name).await;
+    let state = build_state(&keys, &opts.name, opts.model.as_deref()).await;
+    let model = state.model.clone();
     let app = crate::build_router(state);
 
     let listener = match tokio::net::TcpListener::bind((opts.host.as_str(), opts.port)).await {
@@ -792,42 +809,51 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
         &local,
         &keys,
         &opts,
-        public.as_deref(),
-        provider.as_deref(),
-        verified,
+        &PublishedTunnel {
+            public: public.as_deref(),
+            provider: provider.as_deref(),
+            verified,
+        },
+        &model,
     )?;
     let children = std::sync::Arc::new(std::sync::Mutex::new(tunnel_children));
-    // Free tunnels die silently (pinggy after 60 min, others whenever).
-    // Watch the URL we handed out and open a new tunnel when it stops
-    // answering; endpoint.json always holds the current one.
-    if verified
-        && matches!(
-            provider.as_deref(),
-            Some("cloudflare" | "localhost.run" | "pinggy")
-        )
-    {
-        let (children, dir, local, keys, opts) = (
+    // Free tunnels die silently (pinggy after 60 minutes, others whenever
+    // the provider feels like it). Watch the tunnel we handed out and open
+    // a new one when it dies; endpoint.json always holds the current URL.
+    // This must also run when the URL could not be verified from here: a
+    // network whose egress blocks the self-check is exactly the network
+    // that needs a watcher. There, probing is meaningless, so watch the
+    // tunnel processes themselves instead.
+    if public.is_some() && matches!(provider.as_deref(), Some("cloudflare" | "pinggy")) {
+        let (children, dir, local, keys, opts, model) = (
             children.clone(),
             dir.clone(),
             local.clone(),
             keys.clone(),
             opts.clone(),
+            model.clone(),
         );
         let mut current = public.clone().unwrap_or_default();
         tokio::spawn(async move {
             let mut misses = 0;
             loop {
-                tokio::time::sleep(Duration::from_secs(60)).await;
-                if probe_once(&current, &keys.caller_key).await {
-                    misses = 0;
-                    continue;
-                }
-                misses += 1;
-                if misses < 3 {
+                tokio::time::sleep(Duration::from_secs(30)).await;
+                let dead = if verified {
+                    if probe_once(&current, &keys.caller_key).await {
+                        misses = 0;
+                        false
+                    } else {
+                        misses += 1;
+                        misses >= 3
+                    }
+                } else {
+                    children_all_dead(&children)
+                };
+                if !dead {
                     continue;
                 }
                 misses = 0;
-                eprintln!("omni2api: {current} stopped answering; opening a new tunnel");
+                eprintln!("omni2api: tunnel for {current} died; opening a new one");
                 for mut c in children
                     .lock()
                     .map(|mut v| std::mem::take(&mut *v))
@@ -845,9 +871,12 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
                     &local,
                     &keys,
                     &opts,
-                    public.as_deref(),
-                    provider.as_deref(),
-                    verified,
+                    &PublishedTunnel {
+                        public: public.as_deref(),
+                        provider: provider.as_deref(),
+                        verified,
+                    },
+                    &model,
                 );
                 if let Some(p) = public {
                     eprintln!("omni2api: new public URL {p}");
@@ -871,6 +900,17 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     res
 }
 
+/// True when every tunnel child process has exited. An empty set is not
+/// "dead" — it means there is no tunnel process to watch.
+fn children_all_dead(children: &std::sync::Mutex<Vec<Child>>) -> bool {
+    let Ok(mut v) = children.lock() else {
+        return false;
+    };
+    !v.is_empty()
+        && v.iter_mut()
+            .all(|c| matches!(c.try_wait(), Ok(Some(_)) | Err(_)))
+}
+
 async fn probe_once(public: &str, caller_key: &str) -> bool {
     let Ok(client) = reqwest::Client::builder()
         .timeout(Duration::from_secs(15))
@@ -882,16 +922,23 @@ async fn probe_once(public: &str, caller_key: &str) -> bool {
     matches!(client.get(&url).bearer_auth(caller_key).send().await, Ok(r) if r.status().is_success())
 }
 
+/// The tunnel facts `endpoint.json` reports alongside the addresses.
+struct PublishedTunnel<'a> {
+    public: Option<&'a str>,
+    provider: Option<&'a str>,
+    verified: bool,
+}
+
 fn publish_endpoint(
     dir: &std::path::Path,
     local: &str,
     keys: &Keys,
     opts: &UpOptions,
-    public: Option<&str>,
-    provider: Option<&str>,
-    verified: bool,
+    tunnel: &PublishedTunnel<'_>,
+    model: &crate::storage::ModelName,
 ) -> anyhow::Result<()> {
-    let mut info = endpoint_json(local, public, keys);
+    let (public, provider, verified) = (tunnel.public, tunnel.provider, tunnel.verified);
+    let mut info = endpoint_json(local, public, keys, &model.get());
     info["tunnel"] = serde_json::json!(provider);
     if provider == Some("pinggy") {
         info["public_note"] = serde_json::json!(
@@ -904,7 +951,7 @@ fn publish_endpoint(
         );
     } else if public.is_none() && opts.tunnel != "none" {
         info["public_note"] = serde_json::json!(
-            "no tunnel could be opened from this machine (outbound traffic to Cloudflare, localhost.run and pinggy blocked?). The local URL works; for a public one run omni2api on a machine with normal internet access, or use a named tunnel / your own server"
+            "no tunnel could be opened from this machine (outbound traffic to Cloudflare and pinggy blocked?). The local URL works; for a public one run omni2api on a machine with normal internet access, or use a named tunnel / your own server"
         );
     }
     write_private(
@@ -935,11 +982,6 @@ mod tests {
     #[test]
     fn finds_ssh_tunnel_urls() {
         assert_eq!(
-            find_ssh_url("abc123.lhr.life tunneled with tls termination, https://abc123.lhr.life")
-                .as_deref(),
-            Some("https://abc123.lhr.life")
-        );
-        assert_eq!(
             find_ssh_url("https://acifd-129-225-183-175.free.pinggy.net\r").as_deref(),
             Some("https://acifd-129-225-183-175.free.pinggy.net")
         );
@@ -951,7 +993,6 @@ mod tests {
             find_ssh_url("visit https://dashboard.pinggy.io for more"),
             None
         );
-        assert_eq!(find_ssh_url("https://localhost.run/docs/faq"), None);
     }
 
     #[test]
@@ -970,7 +1011,7 @@ mod tests {
             caller_key: mint(),
             responder_key: mint(),
         };
-        let state = build_state(&keys, "t").await;
+        let state = build_state(&keys, "t", None).await;
         let c = state
             .identity
             .resolve_principal(&keys.caller_key)

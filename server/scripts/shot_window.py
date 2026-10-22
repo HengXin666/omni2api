@@ -1,4 +1,4 @@
-"""Capture the OpenHuman client window to PNG (DPI-aware, ctypes only)."""
+"""Capture the Omni2API client window to PNG (DPI-aware, ctypes only)."""
 
 import ctypes
 import ctypes.wintypes as wt

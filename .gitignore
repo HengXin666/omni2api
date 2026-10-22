@@ -1,11 +1,11 @@
 # ──────────────────────────────────────────────
-# Root .gitignore for OpenHuman monorepo
+# Root .gitignore for Omni2API monorepo
 # ──────────────────────────────────────────────
 
 # ── Rust ──
 **/target/
 **/*.rs.bk
-# Lock files: openhuman-server ships a [[bin]], so keep its lock for
+# Lock files: omni2api-server ships a [[bin]], so keep its lock for
 # reproducible builds. The Rust SDK is a library crate — its lock is noise.
 sdks/rust/Cargo.lock
 
@@ -74,18 +74,18 @@ observations/
 # Untracked here because they are either operator-specific or
 # superseded snapshots whose stale numbers would mislead a reader:
 #
-#   - OpenHuman_ARCHITECTURE_FINAL.md : early vision spec; its stack
+#   - Omni2API_ARCHITECTURE_FINAL.md : early vision spec; its stack
 #     section (Redis / NATS / OAuth2) no longer matches the code.
 #   - docs/PHASE9_*.md, docs/PHASE10_*.md : point-in-time validation
 #     reports with counts and claims that have since moved on.
-#   - deploy/nginx/openhuman.conf : a live deployment config naming a
+#   - deploy/nginx/omni2api.conf : a live deployment config naming a
 #     real domain and certificate paths. Use
-#     deploy/nginx/openhuman.conf.template instead.
+#     deploy/nginx/omni2api.conf.template instead.
 #   - .vscode/settings.json : editor-local, and references SDK dirs
 #     that no longer exist.
-OpenHuman_ARCHITECTURE_FINAL.md
+Omni2API_ARCHITECTURE_FINAL.md
 docs/PHASE9_E2E_TEST_ENVIRONMENT.md
 docs/PHASE9_E2E_VALIDATION_REPORT.md
 docs/PHASE10_RELEASE_HARDENING_REPORT.md
-deploy/nginx/openhuman.conf
+deploy/nginx/omni2api.conf
 .vscode/

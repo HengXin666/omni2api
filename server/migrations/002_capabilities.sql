@@ -1,4 +1,4 @@
--- OpenHuman — Phase 7 Migration: Agent Capabilities & Contexts
+-- Omni2API — Phase 7 Migration: Agent Capabilities & Contexts
 --
 -- Tables:
 --   agent_capabilities  — tools an agent exposes to humans

@@ -1,16 +1,16 @@
 [package]
-name = "openhuman-server"
+name = "omni2api-server"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "OpenHuman server core — Human-as-an-API runtime"
+description = "Omni2API server core — anything-as-an-API runtime"
 
 [lib]
-name = "openhuman_server"
+name = "omni2api_server"
 path = "src/lib.rs"
 
 [[bin]]
-name = "openhuman-server"
+name = "omni2api-server"
 path = "src/main.rs"
 
 # Same binary under the project name: `omni2api up` is the zero-setup mode.
@@ -20,13 +20,13 @@ path = "src/main.rs"
 
 [features]
 default = ["hf-tokenizers"]
-# Hugging Face tokenizer.json files in OPENHUMAN_TOKENIZER_DIR (DeepSeek,
+# Hugging Face tokenizer.json files in OMNI2API_TOKENIZER_DIR (DeepSeek,
 # Qwen…). Optional: release binaries skip it (it pulls in a C regex lib);
 # the built-in tiktoken encodings are always there.
 hf-tokenizers = ["dep:tokenizers"]
 # Enables the /v1/mock/* harness endpoints at compile time. Off by default:
 # the mock endpoints impersonate the human and must never be reachable in
-# production. Integration tests that need them set OPENHUMAN_MOCK_ENDPOINTS=1
+# production. Integration tests that need them set OMNI2API_MOCK_ENDPOINTS=1
 # at runtime instead (see tests/common setup), so `cargo test` needs no flags.
 mock_endpoints = []
 

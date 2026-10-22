@@ -2,7 +2,7 @@
 name = "oh-seat"
 version = "0.2.0"
 edition = "2021"
-description = "OpenHuman Agent Seat CLI: sit in the responder seat from any terminal (built for AI agents)"
+description = "Omni2API Agent Seat CLI: sit in the responder seat from any terminal (built for AI agents)"
 license = "MIT"
 
 [[bin]]

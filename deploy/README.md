@@ -1,4 +1,4 @@
-# OpenHuman — Deployment Guide
+# Omni2API — Deployment Guide
 
 ## Docker (local development)
 

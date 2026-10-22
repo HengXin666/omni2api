@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# OpenHuman Server — Production Multi-stage Dockerfile (ARM64 & x86)
+# Omni2API Server — Production Multi-stage Dockerfile (ARM64 & x86)
 # ─────────────────────────────────────────────────────────────
 
 # Build stage
@@ -26,17 +26,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Run as non-root user for maximum security
-RUN useradd -m -u 10001 -U openhuman
+RUN useradd -m -u 10001 -U omni2api
 
-COPY --from=builder --chown=openhuman:openhuman /build/target/release/openhuman-server /usr/local/bin/openhuman-server
+COPY --from=builder --chown=omni2api:omni2api /build/target/release/omni2api-server /usr/local/bin/omni2api-server
 
-USER openhuman
-WORKDIR /home/openhuman
+USER omni2api
+WORKDIR /home/omni2api
 
 EXPOSE 8080
-ENV RUST_LOG="openhuman_server=info,tower_http=info"
+ENV RUST_LOG="omni2api_server=info,tower_http=info"
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
     CMD curl -f http://localhost:8080/healthz || exit 1
 
-ENTRYPOINT ["openhuman-server"]
+ENTRYPOINT ["omni2api-server"]

@@ -123,7 +123,7 @@ async fn send_fcm_notification(
             "android": {
                 "priority": "high",
                 "notification": {
-                    "channel_id": "openhuman_high_importance",
+                    "channel_id": "omni2api_high_importance",
                     "sound": "default",
                     "priority": "high",
                     "default_sound": true,
@@ -164,7 +164,7 @@ pub fn dispatch_offline_notification(
     message_preview: String,
 ) {
     tokio::spawn(async move {
-        let title = format!("🔔 [OpenHuman] 来自 {} 的新请求", agent_name);
+        let title = format!("🔔 [Omni2API] 来自 {} 的新请求", agent_name);
         let preview_truncated = if message_preview.chars().count() > 200 {
             let s: String = message_preview.chars().take(200).collect();
             format!("{}...", s)
@@ -222,7 +222,7 @@ pub fn dispatch_offline_notification(
                         "agent_name": agent_name,
                         "conversation_id": conversation_id,
                         // Bark compatibility
-                        "group": "OpenHuman",
+                        "group": "Omni2API",
                         // Feishu compatibility
                         "msg_type": "text",
                         "content": {

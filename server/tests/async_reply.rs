@@ -2,22 +2,22 @@
 //!
 //! Covers the two behaviours that are easy to break silently:
 //!
-//! 1. A turn submitted with `X-OpenHuman-Mode: async` must return `202` with
+//! 1. A turn submitted with `X-Omni2api-Mode: async` must return `202` with
 //!    an `invocation_id`, and the human's eventual reply must be retrievable
 //!    from `GET /v1/replies/{id}` — including when the reply is a tool call.
 //! 2. Requests carrying different conversation ids must land in different
 //!    conversations rather than one shared transcript.
 
-use openhuman_server::build_router;
-use openhuman_server::storage::memory::MemoryStore;
-use openhuman_server::storage::AppState;
+use omni2api_server::build_router;
+use omni2api_server::storage::memory::MemoryStore;
+use omni2api_server::storage::AppState;
 
 const DEMO_KEY: &str = "ohk_demo_alice_codex";
 
 fn test_app() -> axum::Router {
     // The /v1/mock/* harness is disabled unless explicitly enabled;
     // these tests drive turns through it, so opt in for the test run.
-    std::env::set_var("OPENHUMAN_MOCK_ENDPOINTS", "1");
+    std::env::set_var("OMNI2API_MOCK_ENDPOINTS", "1");
     let store = MemoryStore::seeded();
     let state = AppState::from_store(store);
     build_router(state)
@@ -44,9 +44,9 @@ async fn async_turn_returns_202_then_completes_after_human_reply() {
     let resp = client
         .post(format!("{}/v1/chat/completions", base))
         .header("Authorization", format!("Bearer {}", DEMO_KEY))
-        .header("X-OpenHuman-Mode", "async")
+        .header("X-Omni2api-Mode", "async")
         .json(&serde_json::json!({
-            "model": "openhuman-human",
+            "model": "omni2api",
             "messages": [{"role": "user", "content": "Async question"}]
         }))
         .send()
@@ -118,9 +118,9 @@ async fn async_tool_call_is_not_downgraded_to_text() {
     let resp = client
         .post(format!("{}/v1/chat/completions", base))
         .header("Authorization", format!("Bearer {}", DEMO_KEY))
-        .header("X-OpenHuman-Mode", "async")
+        .header("X-Omni2api-Mode", "async")
         .json(&serde_json::json!({
-            "model": "openhuman-human",
+            "model": "omni2api",
             "messages": [{"role": "user", "content": "Run a command"}]
         }))
         .send()
@@ -209,10 +209,10 @@ async fn distinct_conversation_ids_create_distinct_conversations() {
         let resp = client
             .post(format!("{}/v1/chat/completions", base))
             .header("Authorization", format!("Bearer {}", DEMO_KEY))
-            .header("X-OpenHuman-Conversation-Id", conversation)
-            .header("X-OpenHuman-Mode", "async")
+            .header("X-Omni2api-Conversation-Id", conversation)
+            .header("X-Omni2api-Mode", "async")
             .json(&serde_json::json!({
-                "model": "openhuman-human",
+                "model": "omni2api",
                 "messages": [{"role": "user", "content": "hello"}]
             }))
             .send()
@@ -245,9 +245,9 @@ async fn no_conversation_id_shares_the_default_scope() {
         let resp = client
             .post(format!("{}/v1/chat/completions", base))
             .header("Authorization", format!("Bearer {}", DEMO_KEY))
-            .header("X-OpenHuman-Mode", "async")
+            .header("X-Omni2api-Mode", "async")
             .json(&serde_json::json!({
-                "model": "openhuman-human",
+                "model": "omni2api",
                 "messages": [{"role": "user", "content": "hello"}]
             }))
             .send()

@@ -1,23 +1,23 @@
-//! OpenHuman Server — entry point.
+//! Omni2API Server — entry point.
 //!
 //! Phase 5: PostgreSQL Persistence + WebSocket Human Gateway.
 //!
-//! The backend is selected by the `OPENHUMAN_BACKEND` env var:
+//! The backend is selected by the `OMNI2API_BACKEND` env var:
 //!   - `memory`  (default) — in-memory store, no external deps
 //!   - `postgres`            — PostgreSQL + SQLx, requires `DATABASE_URL`
 //!
 //! ```text
-//! Agent Client → POST /v1/chat/completions → OpenHuman Server
+//! Agent Client → POST /v1/chat/completions → Omni2API Server
 //!      ↓ (SSE keepalive while waiting)
 //! Human Client → WS /ws (authenticate → receive message → send reply)
 //!      ↓
 //! Agent receives SSE chunks → [DONE]
 //! ```
 
-use openhuman_server::build_router;
-use openhuman_server::storage::memory::MemoryStore;
-use openhuman_server::storage::postgres::{InMemoryReplyRegistry, PostgresStore};
-use openhuman_server::storage::AppState;
+use omni2api_server::build_router;
+use omni2api_server::storage::memory::MemoryStore;
+use omni2api_server::storage::postgres::{InMemoryReplyRegistry, PostgresStore};
+use omni2api_server::storage::AppState;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -41,17 +41,17 @@ async fn main() -> anyhow::Result<()> {
         )
         .init();
 
-    // Admin: `openhuman-server issue-key ...` mints a key and exits.
+    // Admin: `omni2api-server issue-key ...` mints a key and exits.
     if args.get(1).map(|s| s.as_str()) == Some("issue-key") {
         return issue_key(&args[2..]).await;
     }
     // Zero-setup mode: in-memory, keys minted, public tunnel. See quick.rs.
     match args.get(1).map(|s| s.as_str()) {
-        Some("up") => return openhuman_server::quick::run_up(&args[2..]).await,
-        Some("status") => return openhuman_server::quick::run_status(),
-        Some("down") => return openhuman_server::quick::run_down(),
+        Some("up") => return omni2api_server::quick::run_up(&args[2..]).await,
+        Some("status") => return omni2api_server::quick::run_status(),
+        Some("down") => return omni2api_server::quick::run_down(),
         Some("help" | "-h" | "--help") => {
-            print!("{}", openhuman_server::quick::USAGE);
+            print!("{}", omni2api_server::quick::USAGE);
             return Ok(());
         }
         Some("serve") => {}
@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
             .file_stem()
             .is_some_and(|s| s == "omni2api") =>
         {
-            print!("{}", openhuman_server::quick::USAGE);
+            print!("{}", omni2api_server::quick::USAGE);
             return Ok(());
         }
         _ => {}
@@ -67,28 +67,28 @@ async fn main() -> anyhow::Result<()> {
 
     // Only tokenizers that load can be chosen; a default naming anything
     // else is a configuration error, not something to paper over.
-    let tokenizer = openhuman_server::session::default_tokenizer();
-    if !openhuman_server::session::tokenizer_available(&tokenizer) {
+    let tokenizer = omni2api_server::session::default_tokenizer();
+    if !omni2api_server::session::tokenizer_available(&tokenizer) {
         anyhow::bail!(
-            "OPENHUMAN_TOKENIZER={} is not available; choose one of: {}",
+            "OMNI2API_TOKENIZER={} is not available; choose one of: {}",
             tokenizer,
-            openhuman_server::session::available_tokenizers().join(", ")
+            omni2api_server::session::available_tokenizers().join(", ")
         );
     }
     tracing::info!(
         "Usage counted with tokenizer {} (available: {})",
         tokenizer,
-        openhuman_server::session::available_tokenizers().join(", ")
+        omni2api_server::session::available_tokenizers().join(", ")
     );
 
-    tracing::info!("OpenHuman Server starting...");
+    tracing::info!("omni2api server starting...");
 
-    let backend = std::env::var("OPENHUMAN_BACKEND").unwrap_or_else(|_| "memory".to_string());
+    let backend = std::env::var("OMNI2API_BACKEND").unwrap_or_else(|_| "memory".to_string());
 
     let state = match backend.as_str() {
         "postgres" | "postgresql" | "pg" => {
             let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-                "postgres://openhuman:openhuman@localhost:5432/openhuman".to_string()
+                "postgres://omni2api:omni2api@localhost:5432/omni2api".to_string()
             });
             tracing::info!("Using PostgreSQL backend: {}", redact_db_url(&db_url));
             let store = PostgresStore::new(&db_url).await?;
@@ -105,8 +105,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = build_router(state);
 
-    let host = std::env::var("OPENHUMAN_HOST").unwrap_or_else(|_| "0.0.0.0".into());
-    let port: u16 = std::env::var("OPENHUMAN_PORT")
+    let host = std::env::var("OMNI2API_HOST").unwrap_or_else(|_| "0.0.0.0".into());
+    let port: u16 = std::env::var("OMNI2API_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8080);
@@ -148,14 +148,14 @@ fn redact_db_url(url: &str) -> String {
 /// only its SHA-256 digest is stored.
 ///
 /// ```text
-/// openhuman-server issue-key --human hum_x --human-name "Hark" \
+/// omni2api-server issue-key --human hum_x --human-name "Hark" \
 ///     --agent agt_x --agent-name "Juwan's Claude Code" --scope caller
 /// ```
 async fn issue_key(args: &[String]) -> anyhow::Result<()> {
-    use openhuman_server::model::identity::{
+    use omni2api_server::model::identity::{
         AgentIdentity, ApiKey, ClientType, HumanIdentity, HumanStatus, KeyScope,
     };
-    use openhuman_server::storage::traits::IdentityRepository;
+    use omni2api_server::storage::traits::IdentityRepository;
     use std::collections::HashMap;
 
     let get = |flag: &str| -> Option<String> {

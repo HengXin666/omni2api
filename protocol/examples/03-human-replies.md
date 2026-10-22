@@ -17,7 +17,7 @@ She presses **Send**.
 
 ---
 
-## Human Client → OpenHuman Server
+## Human Client → Omni2API Server
 
 The Flutter client sends the reply over its WebSocket connection:
 
@@ -113,7 +113,7 @@ The server converts the human's `Message` into OpenAI SSE chunks.
 ### Chunk 1: Role announcement
 
 ```
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
 ```
 
 ### Chunks 2-N: Content deltas
@@ -121,21 +121,21 @@ data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736
 The human's text is split into chunks (by word or line for natural streaming):
 
 ```
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"The auth middleware looks solid. "},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"The auth middleware looks solid. "},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"A few suggestions:\n"},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"A few suggestions:\n"},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"1. Add rate limiting to token validation\n"},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"1. Add rate limiting to token validation\n"},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"2. Use constant-time comparison for API key hashes\n"},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"2. Use constant-time comparison for API key hashes\n"},"finish_reason":null}]}
 
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{"content":"3. Consider adding an expiry check for decoded claims"},"finish_reason":null}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{"content":"3. Consider adding an expiry check for decoded claims"},"finish_reason":null}]}
 ```
 
 ### Final Chunk: Finish
 
 ```
-data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"openhuman-human","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+data: {"id":"chatcmpl-cnvtok123","object":"chat.completion.chunk","created":1736936400,"model":"omni2api","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
 
 data: [DONE]
 ```
@@ -148,7 +148,7 @@ Codex receives a standard OpenAI streaming response. It has no idea a human
 typed this. From its perspective:
 
 ```
-Model:    openhuman-human
+Model:    omni2api
 Role:     assistant
 Content:  The auth middleware looks solid. A few suggestions:
           1. Add rate limiting to token validation
@@ -165,7 +165,7 @@ Codex processes this as a normal LLM response and can act on the suggestions
 ## Full End-to-End Flow
 
 ```
-Codex Agent              OpenHuman Server              Alice (Flutter)
+Codex Agent              Omni2API Server              Alice (Flutter)
     |                          |                            |
     |-- POST /v1/chat/completions -->                      |
     |   (messages, stream:true) |                            |
@@ -199,7 +199,7 @@ If the agent sent `stream: false`, the response is a single JSON body:
   "id": "chatcmpl-cnvtok123",
   "object": "chat.completion",
   "created": 1736936400,
-  "model": "openhuman-human",
+  "model": "omni2api",
   "choices": [
     {
       "index": 0,
@@ -230,7 +230,7 @@ holding the socket indefinitely:
   "id": "chatcmpl-cnvtok123",
   "object": "chat.completion",
   "created": 1736936400,
-  "model": "openhuman-human",
+  "model": "omni2api",
   "status": "pending",
   "invocation_id": "inv_01H8X...",
   "poll_url": "/v1/replies/inv_01H8X..."
@@ -239,4 +239,4 @@ holding the socket indefinitely:
 
 Poll `poll_url` — optionally with `?wait=<secs>` to long-poll — until the
 reply is ready. A client that knows it will be slow can send
-`X-OpenHuman-Mode: async` on the original request and get the `202` immediately.
+`X-Omni2api-Mode: async` on the original request and get the `202` immediately.

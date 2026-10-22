@@ -426,11 +426,11 @@ pub fn take_reasoning(conversation_id: &str) -> Option<String> {
 //
 //   built in: o200k_base (default), cl100k_base, p50k_base, r50k_base
 //   plus every `<name>.json` Hugging Face tokenizer file in
-//   `OPENHUMAN_TOKENIZER_DIR` (DeepSeek, Qwen… download their tokenizer.json)
+//   `OMNI2API_TOKENIZER_DIR` (DeepSeek, Qwen… download their tokenizer.json)
 //
-// `GET /v1/tokenizers` lists them. Server default: `OPENHUMAN_TOKENIZER`
+// `GET /v1/tokenizers` lists them. Server default: `OMNI2API_TOKENIZER`
 // (startup fails on a name not in the list). Per request:
-// `x-openhuman-tokenizer` (400 on a name not in the list).
+// `x-omni2api-tokenizer` (400 on a name not in the list).
 
 const BUILTIN_TOKENIZERS: [&str; 4] = ["o200k_base", "cl100k_base", "p50k_base", "r50k_base"];
 
@@ -467,7 +467,7 @@ fn registry() -> &'static HashMap<String, Counter> {
             }
         }
         #[cfg(feature = "hf-tokenizers")]
-        if let Ok(dir) = std::env::var("OPENHUMAN_TOKENIZER_DIR") {
+        if let Ok(dir) = std::env::var("OMNI2API_TOKENIZER_DIR") {
             if let Ok(entries) = std::fs::read_dir(dir.trim()) {
                 for e in entries.flatten() {
                     let path = e.path();
@@ -503,7 +503,7 @@ pub fn tokenizer_available(name: &str) -> bool {
 
 /// The server's default tokenizer name (validated at startup).
 pub fn default_tokenizer() -> String {
-    std::env::var("OPENHUMAN_TOKENIZER")
+    std::env::var("OMNI2API_TOKENIZER")
         .ok()
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())

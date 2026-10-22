@@ -109,12 +109,12 @@ impl PostgresStore {
         self.pool.execute(sql6).await?;
         // 001 re-seeds the public demo key on every boot. Outside an
         // explicit demo it must not authenticate anything.
-        if std::env::var("OPENHUMAN_DEMO").ok().as_deref() != Some("1") {
+        if std::env::var("OMNI2API_DEMO").ok().as_deref() != Some("1") {
             self.pool
                 .execute("UPDATE api_keys SET scope = 'revoked' WHERE id = 'key_demo_001'")
                 .await?;
         } else {
-            tracing::warn!("OPENHUMAN_DEMO=1 — the public demo key is live");
+            tracing::warn!("OMNI2API_DEMO=1 — the public demo key is live");
         }
         Ok(())
     }

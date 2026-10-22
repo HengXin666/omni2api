@@ -1,5 +1,5 @@
 # Human Online Keeper — keeps a WebSocket connection alive
-# so OpenHuman treats the human as "online" and pushes messages
+# so Omni2API treats the human as "online" and pushes messages
 # to this connection instead of marking them as Pending.
 #
 # Usage: powershell -ExecutionPolicy Bypass -File human-online.ps1

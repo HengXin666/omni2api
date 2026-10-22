@@ -4,7 +4,7 @@
 //!
 //! Phase 7: Agent Capability & Context Layer.
 //!
-//! OpenHuman is a **transport layer** for tool invocation. It does not
+//! Omni2API is a **transport layer** for tool invocation. It does not
 //! execute tools — it carries `tool.invoke` from the human to the agent
 //! and relays `tool.result` back.
 

@@ -9,9 +9,9 @@
 //! 4. `test_tool_invoke_unknown_tool_error` — invoking a non-existent tool
 //!    returns an error event to the human
 
-use openhuman_server::build_router;
-use openhuman_server::storage::memory::MemoryStore;
-use openhuman_server::storage::AppState;
+use omni2api_server::build_router;
+use omni2api_server::storage::memory::MemoryStore;
+use omni2api_server::storage::AppState;
 
 use futures::stream::StreamExt;
 use futures::SinkExt;
@@ -113,7 +113,7 @@ async fn test_agent_manifest_pushes_to_human() {
                 "version": "0.1.0"
             },
             "environment": {
-                "repo": "openhuman/openhuman",
+                "repo": "omni2api/omni2api",
                 "branch": "main"
             }
         }
@@ -155,8 +155,8 @@ async fn test_agent_manifest_pushes_to_human() {
 
 #[tokio::test]
 async fn test_capability_storage_persistence() {
-    use openhuman_server::model::agent_capability::AgentCapability;
-    use openhuman_server::storage::traits::CapabilityRepository;
+    use omni2api_server::model::agent_capability::AgentCapability;
+    use omni2api_server::storage::traits::CapabilityRepository;
     use std::collections::HashMap;
 
     let store = MemoryStore::new();
@@ -296,7 +296,7 @@ async fn test_human_tool_invoke_reaches_agent_sse() {
         "invocation_id": "inv_test_001",
         "tool_id": "github_create_issue",
         "input": {
-            "repo": "openhuman/openhuman",
+            "repo": "omni2api/omni2api",
             "title": "Bug: test fails"
         }
     });
@@ -397,8 +397,8 @@ async fn test_tool_invoke_unknown_tool_error() {
 
 #[tokio::test]
 async fn test_context_storage_persistence() {
-    use openhuman_server::model::agent_context::AgentContext;
-    use openhuman_server::storage::traits::ContextRepository;
+    use omni2api_server::model::agent_context::AgentContext;
+    use omni2api_server::storage::traits::ContextRepository;
 
     let store = MemoryStore::new();
 
@@ -411,7 +411,7 @@ async fn test_context_storage_persistence() {
         system_prompt: Some("You are a coding assistant.".into()),
         model: Some(serde_json::json!({ "name": "gpt-4o", "provider": "openai" })),
         runtime: Some(serde_json::json!({ "platform": "linux", "version": "0.1.0" })),
-        environment: Some(serde_json::json!({ "repo": "openhuman/openhuman", "branch": "main" })),
+        environment: Some(serde_json::json!({ "repo": "omni2api/omni2api", "branch": "main" })),
     };
     store.set_context("agt_test", ctx).await;
 

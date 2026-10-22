@@ -1,6 +1,6 @@
 //! Agent Seat — the human seat, opened to agents over plain HTTP.
 //!
-//! The human side of OpenHuman normally speaks WebSocket: a Flutter client
+//! The human side of Omni2API normally speaks WebSocket: a Flutter client
 //! holds a socket open, receives `message.received`, and answers with
 //! `reply.send` / `tool.invoke` / `end.turn`. An *agent* sitting in that
 //! seat (a remote assistant answering a developer who types into Claude
@@ -61,9 +61,9 @@ const COMPACT_TEXT_CHARS: usize = 8000;
 /// keep both ends.
 const COMPACT_OUTPUT_CHARS: usize = 60000;
 
-/// Detach a seat after this long without a poll (`OPENHUMAN_SEAT_TTL_SECS`).
+/// Detach a seat after this long without a poll (`OMNI2API_SEAT_TTL_SECS`).
 fn seat_ttl() -> Duration {
-    let secs = std::env::var("OPENHUMAN_SEAT_TTL_SECS")
+    let secs = std::env::var("OMNI2API_SEAT_TTL_SECS")
         .ok()
         .and_then(|v| v.trim().parse::<u64>().ok())
         .filter(|v| *v >= 10)
@@ -174,9 +174,9 @@ fn detached_at() -> &'static std::sync::Mutex<HashMap<String, Instant>> {
 }
 
 /// How long after a seat detaches its human still counts as answered by
-/// an agent (`OPENHUMAN_SEAT_GRACE_SECS`, default 30 minutes).
+/// an agent (`OMNI2API_SEAT_GRACE_SECS`, default 30 minutes).
 fn seat_grace() -> Duration {
-    let secs = std::env::var("OPENHUMAN_SEAT_GRACE_SECS")
+    let secs = std::env::var("OMNI2API_SEAT_GRACE_SECS")
         .ok()
         .and_then(|v| v.trim().parse::<u64>().ok())
         .unwrap_or(1800);
@@ -270,7 +270,7 @@ async fn attach(app: &AppState, p: &AuthPrincipal) -> Arc<Seat> {
     // assistant text. For an agent seat that re-attaches every few minutes
     // it just pollutes transcripts, so it is opt-in here.
     if matches!(
-        std::env::var("OPENHUMAN_SEAT_ANNOUNCE").as_deref(),
+        std::env::var("OMNI2API_SEAT_ANNOUNCE").as_deref(),
         Ok("1") | Ok("true") | Ok("on")
     ) {
         crate::ws::handler::announce_online(app, &seat.human_id).await;
@@ -676,6 +676,62 @@ pub async fn history(
         "conversation_id": q.conversation_id,
         "total": all.len(),
         "messages": items,
+    }))
+    .into_response()
+}
+
+// ── POST /v1/seat/model-name ──
+
+#[derive(Debug, Deserialize)]
+pub struct ModelNameBody {
+    name: String,
+}
+
+/// The seat names the model it sits behind. Callers see this name in
+/// `/v1/models` and use it as the `model` in their requests. A name the
+/// user pinned (`omni2api up --model …` / `OMNI2API_MODEL`) cannot be
+/// overridden — that refusal is the answer, not an error to retry.
+pub async fn model_name(
+    State(app): State<AppState>,
+    principal: AuthPrincipal,
+    Json(b): Json<ModelNameBody>,
+) -> Response {
+    if !principal.api_key.scope.may_respond() {
+        return err(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "Only the seat may name the model.",
+        );
+    }
+    let name = b.name.trim();
+    match app.model.set_seat(name) {
+        Ok(()) => Json(json!({ "ok": true, "model": app.model.get() })).into_response(),
+        Err(crate::storage::SeatNameError::Invalid) => err(
+            StatusCode::BAD_REQUEST,
+            "invalid_model_name",
+            "A model name is 1–64 characters with no whitespace or control characters.",
+        ),
+        Err(crate::storage::SeatNameError::Locked) => err(
+            StatusCode::CONFLICT,
+            "model_name_locked",
+            "The user pinned this instance's model name; it cannot be changed from the seat.",
+        ),
+    }
+}
+
+/// `GET /v1/seat/model-name` — the current name and whether the user
+/// pinned it (a pinned name cannot be changed from the seat).
+pub async fn model_name_get(State(app): State<AppState>, principal: AuthPrincipal) -> Response {
+    if !principal.api_key.scope.may_respond() {
+        return err(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "Only the seat may read the model name.",
+        );
+    }
+    Json(json!({
+        "model": app.model.get(),
+        "locked": app.model.is_locked(),
     }))
     .into_response()
 }

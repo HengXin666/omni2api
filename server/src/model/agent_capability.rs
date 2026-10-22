@@ -5,7 +5,7 @@
 //! Phase 7: Agent Capability & Context Layer.
 //!
 //! An `AgentCapability` describes a tool that an agent can execute on behalf
-//! of the human. OpenHuman **does not execute** the tool — it transports the
+//! of the human. Omni2API **does not execute** the tool — it transports the
 //! `tool.invoke` request to the agent and relays the `tool.result` back.
 
 use std::collections::HashMap;

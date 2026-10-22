@@ -4,7 +4,7 @@
 //! Phase 7.1.1: This replaces the Phase 7 WebSocket `capability.manifest`
 //! as the **primary** capability discovery path. Any OpenAI-compatible
 //! agent automatically gets its tools registered without needing an
-//! OpenHuman-specific SDK or WebSocket protocol.
+//! Omni2API-specific SDK or WebSocket protocol.
 //!
 //! # Data Flow
 //!

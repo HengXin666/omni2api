@@ -56,7 +56,7 @@ WS_URL = sys.argv[2] if len(sys.argv) > 2 else "ws://127.0.0.1:8080/ws"
 
 API_KEY = "ohk_demo_alice_codex"
 
-MODEL = "openhuman-human"
+MODEL = "omni2api"
 
 
 
@@ -70,7 +70,7 @@ TOOLS = [
 
             "name": "probe_ping",
 
-            "description": "Health probe used by the OpenHuman end-to-end test.",
+            "description": "Health probe used by the Omni2API end-to-end test.",
 
             "parameters": {"type": "object", "properties": {"note": {"type": "string"}}},
 
@@ -116,7 +116,7 @@ class Client:
 
         self.slug = slug
 
-        self.s.headers.update({"User-Agent": f"openhuman-probe-{slug}/1.0"})
+        self.s.headers.update({"User-Agent": f"omni2api-probe-{slug}/1.0"})
 
 
 
@@ -126,11 +126,11 @@ class Client:
 
         if conversation:
 
-            headers["X-OpenHuman-Conversation-Id"] = conversation
+            headers["X-Omni2api-Conversation-Id"] = conversation
 
         if async_mode:
 
-            headers["X-OpenHuman-Mode"] = "async"
+            headers["X-Omni2api-Mode"] = "async"
 
         return self.s.post(
 
@@ -494,7 +494,7 @@ async def check_prose_then_later_tool(ws, events: asyncio.Queue, sess: str) -> N
 
     """Prose, then a tool tap a beat later, still inside the merge window.
 
-    The turn is held open for `OPENHUMAN_MERGE_WINDOW_MS` (2000ms by
+    The turn is held open for `OMNI2API_MERGE_WINDOW_MS` (2000ms by
     default) after the first action so a second one can join it. This gap
     is deliberately well inside that window -- it is the pause a human
     actually takes before reaching for a tool, not a slow round trip.

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-OpenHuman end-to-end live demo against the deployed server (default: http://127.0.0.1:8080).
+Omni2API end-to-end live demo against the deployed server (default: http://127.0.0.1:8080).
 
 Three roles are simulated in one process:
 
   1. External Agent  -> POST /v1/chat/completions (stream=true, OpenAI format)
-  2. OpenHuman Server -> cloud (default: http://127.0.0.1:8080)
+  2. Omni2API Server -> cloud (default: http://127.0.0.1:8080)
   3. Human (Alice)   -> WSS /ws  receives `message.received`, sends `reply.send`
 
 Run:
@@ -73,7 +73,7 @@ def agent_call():
                 "Content-Type": "application/json",
             },
             json={
-                "model": "openhuman-human",
+                "model": "omni2api",
                 "stream": True,
                 "messages": [{"role": "user", "content": AGENT_QUESTION}],
             },
@@ -199,7 +199,7 @@ async def human_side():
 
 
 def main():
-    hr("OpenHuman E2E demo - your-server")
+    hr("Omni2API E2E demo - your-server")
     print(f"{stamp()} base url : {BASE_URL}")
     print(f"{stamp()} api key  : {API_KEY}")
 

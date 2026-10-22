@@ -52,7 +52,7 @@ WS_BASE = sys.argv[2] if len(sys.argv) > 2 else BASE.replace("https://", "wss://
     "http://", "ws://"
 )
 API_KEY = "ohk_demo_alice_codex"
-MODEL = "openhuman-human"
+MODEL = "omni2api"
 
 # The probe declares its tools, exactly like a real agent does. This is not
 # decoration: capability registration reads `tools[]` from the request, and a
@@ -63,7 +63,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "probe_ping",
-            "description": "Health probe used by the OpenHuman end-to-end test.",
+            "description": "Health probe used by the Omni2API end-to-end test.",
             "parameters": {
                 "type": "object",
                 "properties": {"note": {"type": "string"}},
@@ -137,8 +137,8 @@ async def main() -> int:
         conv_a = f"{session}-a"
         resp = SESSION.post(
             f"{BASE}/v1/chat/completions",
-            headers={**auth(), "X-OpenHuman-Mode": "async",
-                     "X-OpenHuman-Conversation-Id": conv_a},
+            headers={**auth(), "X-Omni2api-Mode": "async",
+                     "X-Omni2api-Conversation-Id": conv_a},
             json={"model": MODEL, "tools": TOOLS,
                   "messages": [{"role": "user", "content": "run a probe"}]},
             timeout=15,
@@ -202,8 +202,8 @@ async def main() -> int:
     def ask(conversation: str) -> str:
         r = SESSION.post(
             f"{BASE}/v1/chat/completions",
-            headers={**auth(), "X-OpenHuman-Mode": "async",
-                     "X-OpenHuman-Conversation-Id": conversation},
+            headers={**auth(), "X-Omni2api-Mode": "async",
+                     "X-Omni2api-Conversation-Id": conversation},
             json={"model": MODEL, "tools": TOOLS,
                   "messages": [{"role": "user", "content": "hello"}]},
             timeout=15,

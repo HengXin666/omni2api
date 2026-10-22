@@ -46,7 +46,7 @@ def probe(kb, filler="x"):
     """Send one message of ~kb KB; return (delivered, http)."""
     noise = filler * (kb * 1024)
     body = {
-        "model": "openhuman-human",
+        "model": "omni2api",
         "stream": True,
         "messages": [
             {

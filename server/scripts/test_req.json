@@ -1,1 +1,1 @@
-{"model":"openhuman-human","messages":[{"role":"user","content":"hello"}],"stream":true}
+{"model":"omni2api","messages":[{"role":"user","content":"hello"}],"stream":true}

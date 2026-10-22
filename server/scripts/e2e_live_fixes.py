@@ -32,7 +32,7 @@ import websockets
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8080"
 WS_URL = sys.argv[2] if len(sys.argv) > 2 else "ws://127.0.0.1:8080/ws"
 API_KEY = "ohk_demo_alice_codex"
-MODEL = "openhuman-human"
+MODEL = "omni2api"
 
 # Capability registration reads `tools[]` off the request, and a `tool.invoke`
 # for an undeclared tool is rejected with `tool_not_found`. A probe that omits
@@ -42,7 +42,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "probe_ping",
-            "description": "Health probe used by the OpenHuman end-to-end test.",
+            "description": "Health probe used by the Omni2API end-to-end test.",
             "parameters": {"type": "object", "properties": {"note": {"type": "string"}}},
         },
     }
@@ -74,9 +74,9 @@ class Api:
         return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
     def submit(self, conversation: str, messages: list, async_mode: bool = False):
-        headers = {**self.auth, "X-OpenHuman-Conversation-Id": conversation}
+        headers = {**self.auth, "X-Omni2api-Conversation-Id": conversation}
         if async_mode:
-            headers["X-OpenHuman-Mode"] = "async"
+            headers["X-Omni2api-Mode"] = "async"
         return self.s.post(
             f"{BASE}/v1/chat/completions",
             headers=headers,
@@ -171,7 +171,7 @@ async def check_nonstreaming_survives(ws, events: asyncio.Queue, conversation: s
         timeout=15,
     )
     # The mock harness is disabled unless the server opts in
-    # (`mock_endpoints` feature or OPENHUMAN_MOCK_ENDPOINTS=1). A 404 here
+    # (`mock_endpoints` feature or OMNI2API_MOCK_ENDPOINTS=1). A 404 here
     # means the harness is off — the late answer then has no sender, so
     # the rest of this check cannot run.
     if r.status_code == 404:

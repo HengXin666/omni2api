@@ -1,16 +1,16 @@
 // Minimal Anthropic (/v1/messages) <-> OpenAI (/v1/chat/completions) translation proxy.
-// Purpose: let claude-code (Anthropic-native) talk to OpenHuman (OpenAI-compatible).
+// Purpose: let claude-code (Anthropic-native) talk to Omni2API (OpenAI-compatible).
 const http = require('http');
 
 // All four are overridable: the defaults match a server started with
 // `cargo run` and its seeded demo key, so the bridge works out of the box
 // locally. Point it at a real deployment with env vars instead of editing.
-const UPSTREAM = process.env.OPENHUMAN_UPSTREAM || 'http://127.0.0.1:8080';
-const UPSTREAM_MODEL = process.env.OPENHUMAN_MODEL || 'openhuman-human';
-const API_KEY = process.env.OPENHUMAN_API_KEY || 'ohk_demo_alice_codex';
+const UPSTREAM = process.env.OMNI2API_UPSTREAM || 'http://127.0.0.1:8080';
+const UPSTREAM_MODEL = process.env.OMNI2API_MODEL || 'omni2api';
+const API_KEY = process.env.OMNI2API_API_KEY || 'ohk_demo_alice_codex';
 const LISTEN_PORT = Number(process.env.PORT || 8799);
 
-function remapModel(m){ return UPSTREAM_MODEL; }  // always use openhuman-human
+function remapModel(m){ return UPSTREAM_MODEL; }  // always use omni2api
 
 function systemToText(system){
   if(!system) return '';
@@ -118,7 +118,7 @@ const server = http.createServer((req,res)=>{
       if(rb.max_tokens) openaiReq.max_tokens=rb.max_tokens;
       if(typeof rb.temperature==='number') openaiReq.temperature=rb.temperature;
 
-      console.error('[proxy] -> openhuman model=%s tools=%d msgs=%d', model, (tools||[]).length, messages.length);
+      console.error('[proxy] -> omni2api model=%s tools=%d msgs=%d', model, (tools||[]).length, messages.length);
       res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache','connection':'keep-alive'});
 
       const u=new URL(UPSTREAM+'/v1/chat/completions');

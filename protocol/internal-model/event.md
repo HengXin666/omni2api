@@ -154,7 +154,7 @@ Every event shares a common envelope:
 
 ### NATS JetStream (Server-Internal)
 
-- Events are published to a JetStream stream named `openhuman.events`.
+- Events are published to a JetStream stream named `omni2api.events`.
 - Consumers (notification, sync, audit) have their own durable consumer names.
 - JetStream provides **at-least-once** with redelivery and ack timeouts.
 

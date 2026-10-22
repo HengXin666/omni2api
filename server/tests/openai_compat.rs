@@ -4,9 +4,9 @@
 //! The same tests will pass unchanged when the store backend
 //! switches to PostgreSQL.
 
-use openhuman_server::build_router;
-use openhuman_server::storage::memory::MemoryStore;
-use openhuman_server::storage::AppState;
+use omni2api_server::build_router;
+use omni2api_server::storage::memory::MemoryStore;
+use omni2api_server::storage::AppState;
 
 /// Demo API key seeded in the store.
 const DEMO_KEY: &str = "ohk_demo_alice_codex";
@@ -14,7 +14,7 @@ const DEMO_KEY: &str = "ohk_demo_alice_codex";
 fn test_app() -> axum::Router {
     // The /v1/mock/* harness is disabled unless explicitly enabled;
     // these tests drive turns through it, so opt in for the test run.
-    std::env::set_var("OPENHUMAN_MOCK_ENDPOINTS", "1");
+    std::env::set_var("OMNI2API_MOCK_ENDPOINTS", "1");
     let store = MemoryStore::seeded();
     let state = AppState::from_store(store);
     build_router(state)
@@ -124,7 +124,7 @@ async fn test_non_streaming_completion() {
 
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["object"], "chat.completion");
-    assert_eq!(body["model"], "openhuman-human");
+    assert_eq!(body["model"], "omni2api");
     assert_eq!(body["choices"][0]["message"]["role"], "assistant");
     assert_eq!(
         body["choices"][0]["message"]["content"],

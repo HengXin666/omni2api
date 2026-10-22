@@ -21,7 +21,7 @@
 //! forge replies, tool calls, and turn closures. They are therefore
 //! **disabled unless explicitly enabled** — either at compile time via
 //! the `mock_endpoints` cargo feature, or at runtime via
-//! `OPENHUMAN_MOCK_ENDPOINTS=1`. When disabled the routes are not even
+//! `OMNI2API_MOCK_ENDPOINTS=1`. When disabled the routes are not even
 //! registered, so probes get a `404` rather than an error that confirms
 //! the endpoints exist.
 
@@ -36,7 +36,7 @@ use crate::storage::AppState;
 /// Whether the `/v1/mock/*` harness endpoints are enabled.
 ///
 /// Compile-time `mock_endpoints` feature **or** runtime
-/// `OPENHUMAN_MOCK_ENDPOINTS=1` — either one turns them on. Both default to
+/// `OMNI2API_MOCK_ENDPOINTS=1` — either one turns them on. Both default to
 /// off, so a production build serves no mock routes at all.
 ///
 /// The env var exists for e2e probes against a deployed instance, where
@@ -49,7 +49,7 @@ pub fn mock_enabled() -> bool {
 
     #[cfg(not(feature = "mock_endpoints"))]
     {
-        std::env::var("OPENHUMAN_MOCK_ENDPOINTS")
+        std::env::var("OMNI2API_MOCK_ENDPOINTS")
             .map(|v| {
                 let v = v.trim();
                 v == "1" || v.eq_ignore_ascii_case("true")

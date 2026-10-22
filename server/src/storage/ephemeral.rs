@@ -7,7 +7,7 @@
 //! [`EphemeralMessages::save`] (the console's Save button,
 //! `POST /v1/conversations/:id/save`, or the seat's `POST /v1/seat/save`).
 //!
-//! `OPENHUMAN_PERSIST_MESSAGES=1` restores the old behaviour of writing every
+//! `OMNI2API_PERSIST_MESSAGES=1` restores the old behaviour of writing every
 //! message to the database.
 
 use async_trait::async_trait;
@@ -36,7 +36,7 @@ pub struct EphemeralMessages {
 /// Whether every message should go to the database (the old behaviour).
 pub fn persist_all() -> bool {
     matches!(
-        std::env::var("OPENHUMAN_PERSIST_MESSAGES").as_deref(),
+        std::env::var("OMNI2API_PERSIST_MESSAGES").as_deref(),
         Ok("1") | Ok("true") | Ok("on")
     )
 }

@@ -45,9 +45,7 @@ mod tests {
             system_prompt: Some("You are a coding assistant.".into()),
             model: Some(serde_json::json!({ "name": "gpt-4o", "provider": "openai" })),
             runtime: Some(serde_json::json!({ "platform": "linux", "version": "0.1.0" })),
-            environment: Some(
-                serde_json::json!({ "repo": "openhuman/openhuman", "branch": "main" }),
-            ),
+            environment: Some(serde_json::json!({ "repo": "omni2api/omni2api", "branch": "main" })),
         };
 
         let json = serde_json::to_value(&ctx).unwrap();

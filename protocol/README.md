@@ -1,13 +1,13 @@
-# OpenHuman Protocol Specification
+# Omni2API Protocol Specification
 
-This directory is the **single source of truth** for the OpenHuman internal data model
+This directory is the **single source of truth** for the Omni2API internal data model
 and its compatibility mapping to the OpenAI API.
 
 ---
 
 ## Architecture Principle
 
-OpenHuman does **not** define a new agent-facing protocol.
+Omni2API does **not** define a new agent-facing protocol.
 
 External clients (Codex, Claude Code, Trae, any OpenAI-compatible agent) connect via:
 
@@ -17,7 +17,7 @@ Base URL  +  API Key
 
 They speak **OpenAI-compatible API** — nothing new to learn.
 
-Internally, OpenHuman maintains its own data model for:
+Internally, Omni2API maintains its own data model for:
 
 - Server storage (PostgreSQL)
 - Realtime synchronization (NATS JetStream / WebSocket)
@@ -26,7 +26,7 @@ Internally, OpenHuman maintains its own data model for:
 
 ```
 ┌─────────────────────────────────┐    OpenAI API     ┌──────────────────────┐    Internal     ┌────────────────┐
-│  External User's Agent Client   │ ──────────────→  │  OpenHuman Server     │ ──────────────→ │  Human Client   │
+│  External User's Agent Client   │ ──────────────→  │  Omni2API Server     │ ──────────────→ │  Human Client   │
 │  (Codex, Trae, Cursor, etc.)    │                  │  (translation layer)  │                │  (Flutter)      │
 └─────────────────────────────────┘                  └──────────────────────┘                 └────────────────┘
                                                              ↑
@@ -51,8 +51,8 @@ protocol/
 │   ├── chat-completions.md      # Internal model ↔ OpenAI Chat Completions API
 │   └── responses.md             # Internal model ↔ OpenAI Responses API (future)
 └── examples/
-    ├── 01-agent-sends-message.md   # Agent → OpenHuman (OpenAI format → internal)
-    ├── 02-internal-storage.md      # How OpenHuman stores the message
+    ├── 01-agent-sends-message.md   # Agent → Omni2API (OpenAI format → internal)
+    ├── 02-internal-storage.md      # How Omni2API stores the message
     └── 03-human-replies.md         # Human reply → internal → OpenAI format → Agent
 ```
 
@@ -61,7 +61,7 @@ protocol/
 ## Core Design Rules
 
 1. **`assistant` ≠ AI.** In OpenAI's API, `role: assistant` means "the API responder."
-   In OpenHuman, the API responder is the **Human Endpoint**, and the `user` role
+   In Omni2API, the API responder is the **Human Endpoint**, and the `user` role
    maps to the **Agent Client**. This mapping is context-dependent and explicitly
    documented in `openai-compat/`.
 

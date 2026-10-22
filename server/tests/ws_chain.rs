@@ -6,9 +6,9 @@
 //! 3. `test_multi_device_fanout` — same human, 2 devices, both receive
 //! 4. `test_ws_authentication` — valid/invalid/missing key
 
-use openhuman_server::build_router;
-use openhuman_server::storage::memory::MemoryStore;
-use openhuman_server::storage::AppState;
+use omni2api_server::build_router;
+use omni2api_server::storage::memory::MemoryStore;
+use omni2api_server::storage::AppState;
 
 use futures::stream::StreamExt;
 use futures::SinkExt;

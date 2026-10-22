@@ -1,6 +1,6 @@
-# OpenHuman Server
+# Omni2API Server
 
-Rust + Axum implementation of the OpenHuman server core.
+Rust + Axum implementation of the Omni2API server core.
 
 ## Stack
 

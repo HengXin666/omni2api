@@ -21,8 +21,9 @@ use serde_json::Value;
 /// is preserved separately by the observation middleware).
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChatCompletionRequest {
-    /// The model name requested by the agent.
-    /// OpenHuman always responds as "openhuman-human" regardless.
+    /// The model name requested by the agent. Responses carry the
+    /// instance's own model name (see `storage::ModelName`), whatever
+    /// was requested.
     pub model: Option<String>,
     pub messages: Vec<ChatMessage>,
     /// If true, response is SSE stream; otherwise, blocking JSON.
@@ -57,7 +58,7 @@ pub struct ChatCompletionRequest {
     /// OpenAI Responses-API style conversation handle.
     ///
     /// Accepts both `"conv_123"` and `{"id": "conv_123"}`. When present it
-    /// is used to scope the OpenHuman conversation, so switching chat
+    /// is used to scope the Omni2API conversation, so switching chat
     /// windows produces genuinely separate threads instead of appending to
     /// one shared transcript.
     #[serde(default)]
@@ -116,7 +117,7 @@ pub struct ChatMessage {
 
 /// OpenAI message roles.
 ///
-/// **Critical**: In OpenHuman, `assistant` ≠ AI.
+/// **Critical**: In Omni2API, `assistant` ≠ AI.
 /// - `user` → the Agent (API caller)
 /// - `assistant` → the Human (API responder)
 /// - `system` → conversation metadata, not a stored message
@@ -131,7 +132,7 @@ pub enum ChatRole {
     User,
     Assistant,
     /// Tool execution result — sent by the Agent after it executes
-    /// a tool call that the Human (via OpenHuman) requested.
+    /// a tool call that the Human (via Omni2API) requested.
     Tool,
 }
 
@@ -167,7 +168,7 @@ pub struct ContentPart {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImageUrl {
     pub url: String,
-    /// OpenAI allows `"auto" | "low" | "high"`; unused by OpenHuman.
+    /// OpenAI allows `"auto" | "low" | "high"`; unused by Omni2API.
     pub detail: Option<String>,
 }
 
@@ -229,19 +230,19 @@ pub struct ChatCompletionResponse {
     pub id: String,
     pub object: &'static str,
     pub created: i64,
-    pub model: &'static str,
+    pub model: String,
     pub choices: Vec<CompletionChoice>,
     pub usage: Usage,
 }
 
 impl ChatCompletionResponse {
     /// Build a response from a human text reply.
-    pub fn from_human_reply(reply_text: &str) -> Self {
+    pub fn from_human_reply(reply_text: &str, model: &str) -> Self {
         Self {
             id: format!("chatcmpl-{}", uuid::Uuid::now_v7().simple()),
             object: "chat.completion",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![CompletionChoice {
                 index: 0,
                 message: ResponseMessage::text_reply(reply_text),
@@ -260,8 +261,8 @@ impl ChatCompletionResponse {
     /// **Phase 7.3**: Now wired into the request flow via the WS
     /// `reply.send` handler — if the human sends a `tool_call` payload,
     /// it is delivered as a standard OpenAI `tool_calls` response.
-    pub fn from_tool_call(tool_name: &str, arguments: &Value) -> Self {
-        Self::from_tool_call_with_id(None, tool_name, arguments, None)
+    pub fn from_tool_call(tool_name: &str, arguments: &Value, model: &str) -> Self {
+        Self::from_tool_call_with_id(None, tool_name, arguments, None, model)
     }
 
     /// Build a response carrying several tool calls at once.
@@ -270,12 +271,12 @@ impl ChatCompletionResponse {
     /// models one assistant message with an array of calls, so merging them
     /// is what lets a standard client run them in parallel instead of
     /// forcing a round trip per tool.
-    pub fn from_tool_calls(calls: Vec<ToolCallSpec>, content: Option<String>) -> Self {
+    pub fn from_tool_calls(calls: Vec<ToolCallSpec>, content: Option<String>, model: &str) -> Self {
         Self {
             id: format!("chatcmpl-{}", uuid::Uuid::now_v7().simple()),
             object: "chat.completion",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![CompletionChoice {
                 index: 0,
                 message: ResponseMessage::tool_calls(calls, content),
@@ -300,12 +301,13 @@ impl ChatCompletionResponse {
         tool_name: &str,
         arguments: &Value,
         content: Option<String>,
+        model: &str,
     ) -> Self {
         Self {
             id: format!("chatcmpl-{}", uuid::Uuid::now_v7().simple()),
             object: "chat.completion",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![CompletionChoice {
                 index: 0,
                 message: ResponseMessage::tool_call_with_id(call_id, tool_name, arguments, content),
@@ -456,7 +458,7 @@ pub struct ChatCompletionChunk {
     pub id: String,
     pub object: &'static str,
     pub created: i64,
-    pub model: &'static str,
+    pub model: String,
     pub choices: Vec<ChunkChoice>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<Usage>,
@@ -464,12 +466,12 @@ pub struct ChatCompletionChunk {
 
 impl ChatCompletionChunk {
     /// First chunk — carries the `role` delta, no content.
-    pub fn role_header(id: &str) -> Self {
+    pub fn role_header(id: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -485,12 +487,12 @@ impl ChatCompletionChunk {
     }
 
     /// Content chunk — carries a text fragment.
-    pub fn content_delta(id: &str, text: &str) -> Self {
+    pub fn content_delta(id: &str, text: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -506,12 +508,12 @@ impl ChatCompletionChunk {
     }
 
     /// Final chunk — carries `finish_reason: stop`, no content.
-    pub fn finish(id: &str) -> Self {
+    pub fn finish(id: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -531,12 +533,12 @@ impl ChatCompletionChunk {
     /// Sent as a `data:` line during the keepalive phase to keep the
     /// SSE connection alive. OpenAI SDK ignores SSE comment lines
     /// (`: ...`), so we must send actual `data:` lines.
-    pub fn heartbeat(id: &str) -> Self {
+    pub fn heartbeat(id: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -552,12 +554,12 @@ impl ChatCompletionChunk {
     }
 
     /// Reasoning delta — the responder's thinking, streamed before content.
-    pub fn reasoning_delta(id: &str, text: &str) -> Self {
+    pub fn reasoning_delta(id: &str, text: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -573,8 +575,8 @@ impl ChatCompletionChunk {
     }
 
     /// Usage chunk carrying counted tokens.
-    pub fn usage_chunk_with(id: &str, usage: Usage) -> Self {
-        let mut c = Self::usage_chunk(id);
+    pub fn usage_chunk_with(id: &str, usage: Usage, model: &str) -> Self {
+        let mut c = Self::usage_chunk(id, model);
         c.usage = Some(usage);
         c
     }
@@ -583,12 +585,12 @@ impl ChatCompletionChunk {
     /// requests `stream_options: { include_usage: true }`.
     ///
     /// Per OpenAI spec: choices is empty, usage is populated.
-    pub fn usage_chunk(id: &str) -> Self {
+    pub fn usage_chunk(id: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![],
             usage: Some(Usage::default()),
         }
@@ -598,8 +600,14 @@ impl ChatCompletionChunk {
     ///
     /// Sent as a single chunk in streaming mode so the agent receives
     /// the complete tool call without fragmentation.
-    pub fn tool_call_delta(id: &str, call_id: &str, tool_name: &str, arguments: &str) -> Self {
-        Self::tool_call_delta_at(id, 0, call_id, tool_name, arguments)
+    pub fn tool_call_delta(
+        id: &str,
+        call_id: &str,
+        tool_name: &str,
+        arguments: &str,
+        model: &str,
+    ) -> Self {
+        Self::tool_call_delta_at(id, 0, call_id, tool_name, arguments, model)
     }
 
     /// One tool call of several in a streamed message. `index` is the
@@ -612,12 +620,13 @@ impl ChatCompletionChunk {
         call_id: &str,
         tool_name: &str,
         arguments: &str,
+        model: &str,
     ) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -641,12 +650,12 @@ impl ChatCompletionChunk {
     }
 
     /// Finish chunk for tool calls — `finish_reason: tool_calls`.
-    pub fn finish_tool_calls(id: &str) -> Self {
+    pub fn finish_tool_calls(id: &str, model: &str) -> Self {
         Self {
             id: id.to_string(),
             object: "chat.completion.chunk",
             created: Utc::now().timestamp(),
-            model: "openhuman-human",
+            model: model.to_string(),
             choices: vec![ChunkChoice {
                 index: 0,
                 delta: Delta {
@@ -712,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_text_reply_response() {
-        let resp = ChatCompletionResponse::from_human_reply("Hello!");
+        let resp = ChatCompletionResponse::from_human_reply("Hello!", "omni2api");
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["choices"][0]["message"]["content"], "Hello!");
         assert_eq!(json["choices"][0]["message"]["role"], "assistant");
@@ -722,7 +731,7 @@ mod tests {
     #[test]
     fn test_tool_call_response() {
         let args = serde_json::json!({"command": "ls -la"});
-        let resp = ChatCompletionResponse::from_tool_call("Bash", &args);
+        let resp = ChatCompletionResponse::from_tool_call("Bash", &args, "omni2api");
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["choices"][0]["finish_reason"], "tool_calls");
         assert!(json["choices"][0]["message"]["content"].is_null());
@@ -772,7 +781,7 @@ mod tests {
     #[test]
     fn test_deserialize_request_with_all_fields() {
         let json = r#"{
-            "model": "openhuman-human",
+            "model": "omni2api",
             "messages": [{"role": "user", "content": "hello"}],
             "stream": true,
             "max_tokens": 32000,
@@ -783,7 +792,7 @@ mod tests {
             "reasoning_effort": "high"
         }"#;
         let req: ChatCompletionRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.model, Some("openhuman-human".into()));
+        assert_eq!(req.model, Some("omni2api".into()));
         assert_eq!(req.tool_choice, Some(serde_json::json!("auto")));
         assert_eq!(
             req.stream_options,

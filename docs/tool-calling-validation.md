@@ -4,9 +4,9 @@
 
 ## 测试目的
 
-验证：任何 OpenAI-compatible Agent，只配置 Base URL + API Key，是否可以通过标准 `tool_calls` 被 OpenHuman 驱动。
+验证：任何 OpenAI-compatible Agent，只配置 Base URL + API Key，是否可以通过标准 `tool_calls` 被 Omni2API 驱动。
 
-**不涉及**：OpenHuman 专用 SDK、WebSocket capability protocol、Flutter UI。
+**不涉及**：Omni2API 专用 SDK、WebSocket capability protocol、Flutter UI。
 
 ---
 
@@ -18,7 +18,7 @@ Agent (Claude Code / Trae / WorkBuddy)
     | POST /v1/chat/completions  (含 tools[])
     |
     v
-OpenHuman Server
+Omni2API Server
     |
     | 1. 自动提取 tools[] → CapabilityRegistry
     | 2. 转发 user message → Human Console (WS)
@@ -32,7 +32,7 @@ Human Console
     | 或 WS reply.send + __tool_call__ payload
     |
     v
-OpenHuman Server
+Omni2API Server
     |
     | 构造标准 OpenAI tool_calls response:
     | {
@@ -64,17 +64,17 @@ Agent 执行工具
     | }
     |
     v
-OpenHuman 记录 tool_result，继续对话
+Omni2API 记录 tool_result，继续对话
 ```
 
 ---
 
 ## 前置准备
 
-### 1. 启动 OpenHuman Server
+### 1. 启动 Omni2API Server
 
 ```bash
-cd e:\openhuman\server
+cd e:\omni2api\server
 cargo run --release
 ```
 
@@ -98,7 +98,7 @@ Human ID: `hum_demo_alice`
 1. 配置 Agent 的 Base URL 为 `http://127.0.0.1:8080/v1`
 2. 配置 API Key 为 `ohk_demo_alice_codex`
 3. 在 Agent 中发送一条消息（例如 "Hello"）
-4. 观察 OpenHuman 日志——应看到：
+4. 观察 Omni2API 日志——应看到：
    ```
    Extracted agent profile from HTTP request agent_id=agt_demo_codex tools_count=N
    ```
@@ -132,7 +132,7 @@ claude
 
 预期：
 - Claude Code 发送 `tools: [Bash, Edit, Read]`
-- OpenHuman 日志显示 `tools_count=3`
+- Omni2API 日志显示 `tools_count=3`
 - 使用 curl 触发 tool call：
   ```bash
   curl -X POST http://127.0.0.1:8080/v1/mock/tool-call \
@@ -146,7 +146,7 @@ claude
 在 Trae 中配置 OpenAI-compatible provider：
 - Base URL: `http://127.0.0.1:8080/v1`
 - API Key: `ohk_demo_alice_codex`
-- Model: `openhuman-human`
+- Model: `omni2api`
 
 在 Trae 中输入任意消息，然后触发 tool call。
 
@@ -155,7 +155,7 @@ claude
 在 WorkBuddy 的 `~/.workbuddy/models.json` 中配置自定义模型：
 - Base URL: `http://127.0.0.1:8080/v1`
 - API Key: `ohk_demo_alice_codex`
-- Model: `openhuman-human`
+- Model: `omni2api`
 
 ---
 
@@ -249,10 +249,10 @@ claude
 
 ## 日志标记
 
-OpenHuman 在日志中输出以下标记，便于调试：
+Omni2API 在日志中输出以下标记，便于调试：
 
-- `[tool_call]` — 当 OpenHuman 生成 tool_calls response 时
-- `[tool_result]` — 当 OpenHuman 收到 Agent 的 role=tool 消息时
+- `[tool_call]` — 当 Omni2API 生成 tool_calls response 时
+- `[tool_result]` — 当 Omni2API 收到 Agent 的 role=tool 消息时
 
 示例日志：
 ```
@@ -266,7 +266,7 @@ OpenHuman 在日志中输出以下标记，便于调试：
 
 ### 测试环境
 - WorkBuddy 5.3.14 (CLI 2.115.0)
-- OpenHuman Server (release build, in-memory backend)
+- Omni2API Server (release build, in-memory backend)
 - API Key: `ohk_demo_alice_codex`
 - Human WebSocket keeper: `python scripts/human_online.py`
 
@@ -274,9 +274,9 @@ OpenHuman 在日志中输出以下标记，便于调试：
 1. WorkBuddy 配置 Base URL `http://127.0.0.1:8080/v1` + API Key
 2. 发送消息 "我发了个 这次能成功吗"
 3. WorkBuddy 发了 3 个并发 SSE 请求（同一 conversation_id），携带 24 个 tools
-4. OpenHuman 自动提取 tools[] 并推送到 Human WebSocket
+4. Omni2API 自动提取 tools[] 并推送到 Human WebSocket
 5. 通过 `POST /v1/mock/tool-call` 触发 `Bash` + `{"command":"echo hello"}`
-6. OpenHuman 返回标准 OpenAI `tool_calls` SSE response
+6. Omni2API 返回标准 OpenAI `tool_calls` SSE response
 7. WorkBuddy 执行 `echo hello`，显示"运行成功"
 8. WorkBuddy 发回 `role: "tool"` + `tool_call_id` 消息
 9. 通过 `POST /v1/mock/human-reply` 发送文本回复结束对话

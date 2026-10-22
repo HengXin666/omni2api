@@ -9,7 +9,7 @@ via the OpenAI Chat Completions API.
 
 ```yaml
 # Codex config
-base_url: https://api.openhuman.dev/v1
+base_url: https://api.omni2api.dev/v1
 api_key: ohk_live_aB3dEf6GhI9jKlMn0pQ
 model: human
 ```
@@ -20,7 +20,7 @@ model: human
 
 ```http
 POST /v1/chat/completions HTTP/1.1
-Host: api.openhuman.dev
+Host: api.omni2api.dev
 Authorization: Bearer ohk_live_aB3dEf6GhI9jKlMn0pQ
 Content-Type: application/json
 
@@ -42,7 +42,7 @@ Content-Type: application/json
 
 ---
 
-## OpenHuman Inbound Processing
+## Omni2API Inbound Processing
 
 ### Step 1: Authenticate
 
@@ -140,7 +140,7 @@ connected devices:
 
 ### Step 6: SSE Keepalive
 
-While waiting for Alice to respond, OpenHuman sends keepalive comments
+While waiting for Alice to respond, Omni2API sends keepalive comments
 to the agent's open HTTP connection:
 
 ```

@@ -24,8 +24,8 @@
 use axum::http::HeaderMap;
 use serde_json::json;
 
-use openhuman_server::openai_compat::{ChatCompletionRequest, ChatRole};
-use openhuman_server::profile::{extract_capabilities, AgentProfile, ClientType};
+use omni2api_server::openai_compat::{ChatCompletionRequest, ChatRole};
+use omni2api_server::profile::{extract_capabilities, AgentProfile, ClientType};
 
 // ── Test Fixtures (derived from Phase 8 observation data) ──
 
@@ -37,11 +37,11 @@ use openhuman_server::profile::{extract_capabilities, AgentProfile, ClientType};
 /// - No User-Agent header
 fn claude_code_request() -> serde_json::Value {
     json!({
-        "model": "openhuman-human",
+        "model": "omni2api",
         "messages": [
             {
                 "role": "system",
-                "content": "x-anthropic-billing-header: cc_version=2.1.241.081; cc_entrypoint=sdk-cli;\nYou are a Claude agent, built on Anthropic's Claude Agent SDK.\nCWD: E:\\openhuman\nDate: 2026-08-24"
+                "content": "x-anthropic-billing-header: cc_version=2.1.241.081; cc_entrypoint=sdk-cli;\nYou are a Claude agent, built on Anthropic's Claude Agent SDK.\nCWD: E:\\omni2api\nDate: 2026-08-24"
             },
             {
                 "role": "user",
@@ -190,7 +190,7 @@ fn workbuddy_request() -> serde_json::Value {
 /// - User-Agent: hertz
 fn trae_request() -> serde_json::Value {
     json!({
-        "model": "openhuman-human",
+        "model": "omni2api",
         "messages": [
             {
                 "role": "system",
@@ -315,7 +315,7 @@ fn test_claude_code_profile_extraction() {
     assert_eq!(profile.client_type, ClientType::ClaudeCode);
 
     // Model
-    assert_eq!(profile.model, Some("openhuman-human".to_string()));
+    assert_eq!(profile.model, Some("omni2api".to_string()));
 
     // System prompt — should contain cc_version
     let sp = profile.system_prompt.as_ref().expect("system prompt");
@@ -380,7 +380,7 @@ fn test_trae_profile_extraction() {
     assert_eq!(profile.client_type, ClientType::Trae);
 
     // Model
-    assert_eq!(profile.model, Some("openhuman-human".to_string()));
+    assert_eq!(profile.model, Some("omni2api".to_string()));
 
     // System prompt
     let sp = profile.system_prompt.as_ref().expect("system prompt");
@@ -524,7 +524,7 @@ fn test_context_extraction_all_agents() {
 
         assert_eq!(ctx.agent_id, "agt_cc");
         assert!(ctx.system_prompt.as_ref().unwrap().contains("cc_version="));
-        assert_eq!(ctx.model.unwrap()["name"], "openhuman-human");
+        assert_eq!(ctx.model.unwrap()["name"], "omni2api");
         let runtime = ctx.runtime.unwrap();
         assert!(runtime["detected_framework"]
             .as_str()
@@ -564,7 +564,7 @@ fn test_context_extraction_all_agents() {
 
         assert_eq!(ctx.agent_id, "agt_trae");
         assert!(ctx.system_prompt.as_ref().unwrap().contains("TraeWork"));
-        assert_eq!(ctx.model.unwrap()["name"], "openhuman-human");
+        assert_eq!(ctx.model.unwrap()["name"], "omni2api");
         let runtime = ctx.runtime.unwrap();
         assert_eq!(runtime["user_agent"].as_str().unwrap(), "hertz");
         assert_eq!(
@@ -585,7 +585,7 @@ fn test_context_extraction_all_agents() {
 fn test_tools_empty_does_not_overwrite() {
     // Simulate a request with tools: [] (like Claude Code's title request)
     let json = json!({
-        "model": "openhuman-human",
+        "model": "omni2api",
         "messages": [{"role": "user", "content": "hello"}],
         "stream": true,
         "tools": []
@@ -688,7 +688,7 @@ fn test_upsert_idempotent() {
 #[test]
 fn test_role_tool_message_parsed() {
     let json = json!({
-        "model": "openhuman-human",
+        "model": "omni2api",
         "messages": [
             {
                 "role": "user",

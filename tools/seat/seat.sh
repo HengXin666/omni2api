@@ -1,6 +1,6 @@
 #!/bin/bash
 # usage: seat.sh listen [after] [max_secs] | seat.sh reply CONV TEXT | seat.sh tool CONV TOOL JSON [TEXT] | seat.sh caps
-B=${OPENHUMAN_URL:-https://api.juwanh.com}; K=$(cat ${OPENHUMAN_SEAT_KEY_FILE:-$HOME/.openhuman/seat_key}); H="Authorization: Bearer $K"
+B=${OMNI2API_URL:-https://api.juwanh.com}; K=$(cat ${OMNI2API_SEAT_KEY_FILE:-$HOME/.omni2api/seat_key}); H="Authorization: Bearer $K"
 case "$1" in
   listen) after=${2:-0}; end=$(( $(date +%s) + ${3:-1100} ))
     while [ $(date +%s) -lt $end ]; do

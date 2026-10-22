@@ -1,6 +1,6 @@
 # Internal Model: Identity
 
-OpenHuman has two first-class identity types: **HumanIdentity** and **AgentIdentity**.
+Omni2API has two first-class identity types: **HumanIdentity** and **AgentIdentity**.
 
 ---
 
@@ -12,7 +12,7 @@ Represents a **real person** who is exposed as an API endpoint.
 {
   "id": "hum_0189abc123",
   "display_name": "Alice Chen",
-  "avatar_url": "https://cdn.openhuman.dev/avatars/hum_0189abc123.png",
+  "avatar_url": "https://cdn.omni2api.dev/avatars/hum_0189abc123.png",
   "status": "online",
   "capabilities": ["answer_questions", "review_design", "provide_feedback"],
   "metadata": {
@@ -54,7 +54,7 @@ Represents a **real person** who is exposed as an API endpoint.
 
 ## 2. AgentIdentity
 
-Represents an **AI agent client** that connects to OpenHuman via the OpenAI-compatible API.
+Represents an **AI agent client** that connects to Omni2API via the OpenAI-compatible API.
 
 ```json
 {
@@ -66,7 +66,7 @@ Represents an **AI agent client** that connects to OpenHuman via the OpenAI-comp
   "metadata": {
     "model": "gpt-4o",
     "version": "1.0.6",
-    "workspace": "openhuman-server"
+    "workspace": "omni2api-server"
   },
   "created_at": "2025-01-15T09:00:00Z",
   "updated_at": "2025-01-15T09:00:00Z"
@@ -127,11 +127,11 @@ a polymorphic join table while keeping type information explicit.
 
 ## 4. Relationship to OpenAI API
 
-| OpenAI concept | OpenHuman internal |
+| OpenAI concept | Omni2API internal |
 |---|---|
 | `user` (role in chat message) | `AgentIdentity` — the API *caller* |
 | `assistant` (role in chat message) | `HumanIdentity` — the API *responder* |
-| `system` (role in chat message) | Synthesized by OpenHuman (not a stored identity) |
+| `system` (role in chat message) | Synthesized by Omni2API (not a stored identity) |
 | API Key | `AgentIdentity.api_key_id` |
 
 This mapping is **contextual**: from the agent's perspective, *it* is the `user`

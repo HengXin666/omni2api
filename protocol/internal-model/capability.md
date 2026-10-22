@@ -6,7 +6,7 @@ Capability describes **what a participant can do** — not what they are allowed
 
 ## 1. Design Principle
 
-OpenHuman is **not a tool approval framework**.
+Omni2API is **not a tool approval framework**.
 
 ```
 ❌  Agent → "Can I use terminal?" → Human approves → Agent runs terminal
@@ -14,7 +14,7 @@ OpenHuman is **not a tool approval framework**.
 ```
 
 Agent tools (terminal, filesystem, browser, github) belong to the agent's own
-environment. OpenHuman has no visibility or control over them.
+environment. Omni2API has no visibility or control over them.
 
 Capabilities are **descriptive metadata** that help participants understand each
 other's value. They drive UI presentation (e.g., showing capability badges on
@@ -71,7 +71,7 @@ human who can `review_design`).
 
 Agents declare their own capabilities — the **tools they expose** to the human.
 This is an **observation and interaction layer**: the human sees what the agent
-can do and can request a tool invocation. OpenHuman **does not execute** the
+can do and can request a tool invocation. Omni2API **does not execute** the
 tool — it only transports the request and visualizes the result.
 
 ```json
@@ -99,7 +99,7 @@ tool — it only transports the request and visualizes the result.
   "ui_schema": {
     "component": "form",
     "fields": [
-      { "name": "repo", "widget": "select", "options": ["openhuman/openhuman"] },
+      { "name": "repo", "widget": "select", "options": ["omni2api/omni2api"] },
       { "name": "title", "widget": "text" },
       { "name": "body", "widget": "textarea" }
     ]
@@ -131,7 +131,7 @@ tool — it only transports the request and visualizes the result.
 AgentCapability is **structurally compatible** with OpenAI's `tools` / `functions`
 format. The `id` maps to `function.name`, `description` maps directly, and
 `input_schema` maps to `function.parameters`. This allows agents that already
-declare OpenAI tools to publish them to OpenHuman without transformation.
+declare OpenAI tools to publish them to Omni2API without transformation.
 
 ---
 
@@ -156,7 +156,7 @@ without exposing secrets, API tokens, or internal state.
     "session_id": "sess_abc123"
   },
   "environment": {
-    "repo": "openhuman/openhuman",
+    "repo": "omni2api/omni2api",
     "branch": "main",
     "working_directory": "/workspace"
   }
@@ -258,7 +258,7 @@ Human UI renders: "Agent has tools: [GitHub Create Issue, Terminal Run, ...]"
 
 ```
 1. Agent connects with API Key
-2. OpenHuman resolves AgentIdentity + bound HumanIdentity
+2. Omni2API resolves AgentIdentity + bound HumanIdentity
 3. Agent can query: GET /v1/agents/{id}/capabilities (SDK API, not OpenAI)
 4. Server returns capability descriptors
 5. Agent constructs a message: "I need design review for X"
@@ -276,7 +276,7 @@ Human UI renders: "Agent has tools: [GitHub Create Issue, Terminal Run, ...]"
 
 ## 9. Tool Invocation Model (Phase 7)
 
-OpenHuman is a **transport and visualization layer** for tool invocation.
+Omni2API is a **transport and visualization layer** for tool invocation.
 It does **not** execute tools. The flow is:
 
 ```
@@ -309,7 +309,7 @@ Human UI renders the result
     "invocation_id": "inv_0189abc123",
     "tool_id": "github_create_issue",
     "input": {
-      "repo": "openhuman/openhuman",
+      "repo": "omni2api/omni2api",
       "title": "Bug: login fails",
       "body": "Steps to reproduce..."
     }
@@ -329,15 +329,15 @@ Human UI renders the result
     "status": "success",
     "output": {
       "issue_number": 42,
-      "html_url": "https://github.com/openhuman/openhuman/issues/42"
+      "html_url": "https://github.com/omni2api/omni2api/issues/42"
     },
     "error": null
   }
 }
 ```
 
-> **Key Principle**: OpenHuman is the **pipe**, not the executor. The agent
-> owns tool execution. The human owns the decision to invoke. OpenHuman
+> **Key Principle**: Omni2API is the **pipe**, not the executor. The agent
+> owns tool execution. The human owns the decision to invoke. Omni2API
 > owns the transport, visualization, and audit trail.
 
 ---
@@ -346,16 +346,16 @@ Human UI renders the result
 
 OpenAI's API has `tools` / `functions` for structured agent-tool interaction.
 
-**OpenHuman does not map capabilities to OpenAI tools.**
+**Omni2API does not map capabilities to OpenAI tools.**
 
-| OpenAI `functions` | OpenHuman Capabilities |
+| OpenAI `functions` | Omni2API Capabilities |
 |---|---|
 | Agent calls a function; server executes; returns result | Human provides a capability; agent sends a message; human responds |
 | Machine-to-machine contract | Human-in-the-loop communication |
 | Synchronous, programmatic | Asynchronous, conversational |
 
 If an agent uses OpenAI function calling, those functions are handled entirely
-within the agent's environment. OpenHuman is the **human communication channel**,
+within the agent's environment. Omni2API is the **human communication channel**,
 not a function execution engine.
 
 However, the `tool.invoke` / `tool.result` model in Phase 7 allows the human
@@ -391,5 +391,5 @@ Reference: `server/src/profile.rs`, `server/src/ws/handler.rs`.
   native extension that supersedes it when present.
 - Human `tool.invoke` is validated against stored capabilities, then
   delivered as a standard OpenAI `tool_calls` response; the agent's
-  `role: "tool"` answer returns as a `tool.result` event. OpenHuman never
+  `role: "tool"` answer returns as a `tool.result` event. Omni2API never
   executes tools.

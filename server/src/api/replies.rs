@@ -1,7 +1,7 @@
 //! `GET /v1/replies/{invocation_id}` — asynchronous reply polling.
 //!
 //! Companion to async mode on `/v1/chat/completions`: the agent submits a
-//! turn with `x-openhuman-mode: async`, receives an `invocation_id` right
+//! turn with `x-omni2api-mode: async`, receives an `invocation_id` right
 //! away, and polls here until the human answers.
 //!
 //! Supports long-polling via `?wait=<secs>` so a well-behaved client holds

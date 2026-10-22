@@ -5,7 +5,7 @@ export NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
 C=$1; P=${2:-"运行一个 shell 命令 echo 测试，然后告诉我结果"}
 D=$(dirname "$0")/$C; rm -rf $D; mkdir -p $D/work; cd $D
 URL=https://api.juwanh.com
-KEY=$(tr -d '\n' < ${OPENHUMAN_CALLER_KEY_FILE}); SEATKEY=$(tr -d '\n' < ${OPENHUMAN_SEAT_KEY_FILE})
+KEY=$(tr -d '\n' < ${OMNI2API_CALLER_KEY_FILE}); SEATKEY=$(tr -d '\n' < ${OMNI2API_SEAT_KEY_FILE})
 pkill -f seatbot.py 2>/dev/null; sleep 1
 timeout 380 python3 $(dirname "$0")/seatbot.py $URL $SEATKEY seat.log 370 > seatbot.out 2>&1 &
 BPID=$!
@@ -14,24 +14,24 @@ export PATH=/workspace/tools/npm/node_modules/.bin:$PATH HOME=$D/home; mkdir -p 
 cd $D/work
 case $C in
   claude)
-    ANTHROPIC_BASE_URL=$URL ANTHROPIC_API_KEY=$KEY ANTHROPIC_MODEL=openhuman-human ANTHROPIC_SMALL_FAST_MODEL=openhuman-human \
+    ANTHROPIC_BASE_URL=$URL ANTHROPIC_API_KEY=$KEY ANTHROPIC_MODEL=omni2api ANTHROPIC_SMALL_FAST_MODEL=omni2api \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 DISABLE_TELEMETRY=1 \
-    timeout 300 claude -p "$P" --model openhuman-human --permission-mode bypassPermissions --output-format json > ../cli.out 2> ../cli.err ;;
+    timeout 300 claude -p "$P" --model omni2api --permission-mode bypassPermissions --output-format json > ../cli.out 2> ../cli.err ;;
   codex)
     OH_KEY=$KEY timeout 300 codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox \
       -c model_provider=oh -c 'model_providers.oh={name="oh",base_url="https://api.juwanh.com/v1",env_key="OH_KEY",wire_api="responses"}' \
-      -m openhuman-human "$P" > ../cli.out 2> ../cli.err ;;
+      -m omni2api "$P" > ../cli.out 2> ../cli.err ;;
   opencode)
     cat > opencode.json <<EOF
-{"\$schema":"https://opencode.ai/config.json","provider":{"oh":{"npm":"@ai-sdk/openai-compatible","name":"OpenHuman","options":{"baseURL":"$URL/v1","apiKey":"$KEY"},"models":{"openhuman-human":{"name":"openhuman-human","tool_call":true,"attachment":true,"modalities":{"input":["text","image"],"output":["text"]}}}}},"model":"oh/openhuman-human","permission":{"bash":"allow","edit":"allow"}}
+{"\$schema":"https://opencode.ai/config.json","provider":{"oh":{"npm":"@ai-sdk/openai-compatible","name":"Omni2API","options":{"baseURL":"$URL/v1","apiKey":"$KEY"},"models":{"omni2api":{"name":"omni2api","tool_call":true,"attachment":true,"modalities":{"input":["text","image"],"output":["text"]}}}}},"model":"oh/omni2api","permission":{"bash":"allow","edit":"allow"}}
 EOF
-    timeout 300 opencode run -m oh/openhuman-human "$P" > ../cli.out 2> ../cli.err ;;
+    timeout 300 opencode run -m oh/omni2api "$P" > ../cli.out 2> ../cli.err ;;
   pi)
     mkdir -p $HOME/.pi/agent
     cat > $HOME/.pi/agent/models.json <<EOF
-{"providers":{"oh":{"baseUrl":"$URL/v1","api":"openai-completions","apiKey":"$KEY","models":[{"id":"openhuman-human","name":"OpenHuman","reasoning":false,"input":["text","image"],"contextWindow":1000000,"maxTokens":131072}]}}}
+{"providers":{"oh":{"baseUrl":"$URL/v1","api":"openai-completions","apiKey":"$KEY","models":[{"id":"omni2api","name":"Omni2API","reasoning":false,"input":["text","image"],"contextWindow":1000000,"maxTokens":131072}]}}}
 EOF
-    timeout 300 pi --provider oh --model openhuman-human -p "$P" > ../cli.out 2> ../cli.err ;;
+    timeout 300 pi --provider oh --model omni2api -p "$P" > ../cli.out 2> ../cli.err ;;
 esac
 echo "cli exit=$?" > ../exit.txt
 sleep 2; kill $BPID 2>/dev/null

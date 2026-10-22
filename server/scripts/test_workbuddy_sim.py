@@ -14,7 +14,7 @@ async def main():
         "User-Agent": "WorkBuddy/5.3.14 WorkBuddy/5.3.14 CLI/2.115.0",
     }
     body = {
-        "model": "openhuman-human",
+        "model": "omni2api",
         "messages": [{"role": "user", "content": "hello test"}],
         "stream": True,
         "stream_options": {"include_usage": True},

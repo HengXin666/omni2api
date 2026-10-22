@@ -1,6 +1,6 @@
 # Internal Model: Message
 
-The Message entity is the atomic unit of communication in OpenHuman.
+The Message entity is the atomic unit of communication in Omni2API.
 
 ---
 
@@ -12,7 +12,7 @@ It does **not** use `role: user` / `role: assistant` as primary fields.
 Instead, every message records a `sender` (a Participant) and a `content` block.
 The OpenAI role mapping is applied only at the compatibility boundary.
 
-> **Critical**: In OpenHuman, `assistant` does **not** mean "AI".
+> **Critical**: In Omni2API, `assistant` does **not** mean "AI".
 > It means "the API responder" — which is the **Human**.
 > The `user` role maps to the **Agent** (the API caller).
 > See `openai-compat/chat-completions.md` for the full mapping.
@@ -154,7 +154,7 @@ not inline.
   "filename": "auth-review.pdf",
   "content_type": "application/pdf",
   "size_bytes": 245678,
-  "url": "https://cdn.openhuman.dev/attachments/att_0189xyz"
+  "url": "https://cdn.omni2api.dev/attachments/att_0189xyz"
 }
 ```
 
@@ -191,7 +191,7 @@ pending → sent → delivered → read
 This is the **only** place where OpenAI roles appear. The internal model
 itself never stores `role: user` or `role: assistant`.
 
-### 6.1 Inbound (Agent → OpenHuman)
+### 6.1 Inbound (Agent → Omni2API)
 
 When an agent calls `POST /v1/chat/completions`:
 
@@ -201,9 +201,9 @@ When an agent calls `POST /v1/chat/completions`:
 | `system` | Stored as metadata on the conversation, not as a message |
 | `assistant` | Previous messages from the human (context continuation) |
 
-### 6.2 Outbound (OpenHuman → Agent)
+### 6.2 Outbound (Omni2API → Agent)
 
-When the human replies and OpenHuman streams the response back via SSE:
+When the human replies and Omni2API streams the response back via SSE:
 
 | Internal sender | OpenAI `role` in response |
 |---|---|

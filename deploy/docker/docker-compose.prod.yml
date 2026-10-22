@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# OpenHuman — Production Docker Compose Configuration
+# Omni2API — Production Docker Compose Configuration
 # ─────────────────────────────────────────────────────────────
 # Designed for production stability, security, and resource isolation.
 #
@@ -9,54 +9,54 @@
 # ─────────────────────────────────────────────────────────────
 
 services:
-  openhuman-db:
+  omni2api-db:
     image: postgres:16-alpine
-    container_name: openhuman-db
+    container_name: omni2api-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-openhuman}
+      POSTGRES_USER: ${POSTGRES_USER:-omni2api}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-openhuman}
+      POSTGRES_DB: ${POSTGRES_DB:-omni2api}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - openhuman-internal
+      - omni2api-internal
     deploy:
       resources:
         limits:
           cpus: '0.75'
           memory: 768M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openhuman} -d ${POSTGRES_DB:-openhuman}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omni2api} -d ${POSTGRES_DB:-omni2api}"]
       interval: 5s
       timeout: 3s
       retries: 5
       start_period: 10s
 
-  openhuman-server:
+  omni2api-server:
     build:
       context: ../../server
       dockerfile: ../deploy/docker/production.Dockerfile
-    container_name: openhuman-server
+    container_name: omni2api-server
     restart: unless-stopped
     ports:
       # Expose ONLY to localhost loopback for local curl/debugging
       - "127.0.0.1:8088:8080"
     environment:
-      OPENHUMAN_BACKEND: postgres
-      DATABASE_URL: postgres://${POSTGRES_USER:-openhuman}:${POSTGRES_PASSWORD}@openhuman-db:5432/${POSTGRES_DB:-openhuman}
-      OPENHUMAN_HOST: 0.0.0.0
-      OPENHUMAN_PORT: 8080
+      OMNI2API_BACKEND: postgres
+      DATABASE_URL: postgres://${POSTGRES_USER:-omni2api}:${POSTGRES_PASSWORD}@omni2api-db:5432/${POSTGRES_DB:-omni2api}
+      OMNI2API_HOST: 0.0.0.0
+      OMNI2API_PORT: 8080
       JWT_SECRET: ${JWT_SECRET}
       FIREBASE_KEY_PATH: /app/firebase-key.json
-      RUST_LOG: "openhuman_server=info,tower_http=info"
+      RUST_LOG: "omni2api_server=info,tower_http=info"
     volumes:
       - ./firebase-key.json:/app/firebase-key.json:ro
     depends_on:
-      openhuman-db:
+      omni2api-db:
         condition: service_healthy
     networks:
-      - openhuman-internal
+      - omni2api-internal
       - aevum-network
     deploy:
       resources:
@@ -72,10 +72,10 @@ services:
 
 volumes:
   pgdata:
-    name: openhuman_pgdata
+    name: omni2api_pgdata
 
 networks:
-  openhuman-internal:
+  omni2api-internal:
     internal: true
   aevum-network:
     external: true

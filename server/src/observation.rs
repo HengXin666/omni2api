@@ -21,7 +21,7 @@
 //!
 //! Observation is always on. The overhead is minimal (one file write
 //! per request). In production, this can be gated behind an env var
-//! `OPENHUMAN_OBSERVATION=off`.
+//! `OMNI2API_OBSERVATION=off`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -66,7 +66,7 @@ pub async fn observe_request(request: Request, next: Next) -> Response {
     let method = request.method().to_string();
     let is_chat_completions = path == "/v1/chat/completions" && method == "POST";
     let enabled = !matches!(
-        std::env::var("OPENHUMAN_OBSERVATION")
+        std::env::var("OMNI2API_OBSERVATION")
             .unwrap_or_default()
             .trim()
             .to_ascii_lowercase()

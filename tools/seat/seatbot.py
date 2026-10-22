@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local scripted seat for e2e-testing terminal clients against a local OpenHuman.
+"""Local scripted seat for e2e-testing terminal clients against a local Omni2API.
 
 Usage: seatbot.py BASE_URL KEY LOGFILE [SECONDS]
 For each new chat conversation: ask for a shell tool call (echo), wait for the
@@ -16,7 +16,7 @@ SHELL_NAMES = ["Bash", "bash", "shell", "exec_command", "local_shell", "RunComma
 def call(method, path, body=None, timeout=100):
     req = urllib.request.Request(BASE + path, method=method,
                                  data=json.dumps(body).encode() if body is not None else None,
-                                 headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json", "User-Agent": "openhuman-seatbot/1.0"})
+                                 headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json", "User-Agent": "omni2api-seatbot/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read() or b"{}")

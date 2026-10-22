@@ -1,13 +1,13 @@
 # ─────────────────────────────────────────────────────────────
-# OpenHuman Nginx Configuration Snippets
+# Omni2API Nginx Configuration Snippets
 # ─────────────────────────────────────────────────────────────
 
 # ── 1. Snippet for inclusion in existing example.com server block ──
 #
 # Add the following block inside `server { listen 443 ssl; server_name example.com; ... }`:
 #
-#    location /openhuman/ {
-#        proxy_pass http://openhuman-server:8080/;
+#    location /omni2api/ {
+#        proxy_pass http://omni2api-server:8080/;
 #        proxy_http_version 1.1;
 #        proxy_set_header Upgrade $http_upgrade;
 #        proxy_set_header Connection "upgrade";
@@ -21,15 +21,15 @@
 #    }
 
 
-# ── 2. Dedicated Subdomain Virtual Host (openhuman.example.com) ──
+# ── 2. Dedicated Subdomain Virtual Host (omni2api.example.com) ──
 #
-# Use after adding DNS A record pointing openhuman.example.com to your server IP
+# Use after adding DNS A record pointing omni2api.example.com to your server IP
 # and obtaining certificate via certbot.
 #
 # server {
 #     listen 80;
 #     listen [::]:80;
-#     server_name openhuman.example.com;
+#     server_name omni2api.example.com;
 #
 #     location /.well-known/acme-challenge/ {
 #         root /var/www/certbot;
@@ -43,16 +43,16 @@
 #     listen 443 ssl;
 #     listen [::]:443 ssl;
 #     http2 on;
-#     server_name openhuman.example.com;
+#     server_name omni2api.example.com;
 #
-#     ssl_certificate /etc/letsencrypt/live/openhuman.example.com/fullchain.pem;
-#     ssl_certificate_key /etc/letsencrypt/live/openhuman.example.com/privkey.pem;
+#     ssl_certificate /etc/letsencrypt/live/omni2api.example.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/omni2api.example.com/privkey.pem;
 #
 #     ssl_protocols TLSv1.2 TLSv1.3;
 #     ssl_prefer_server_ciphers off;
 #
 #     location / {
-#         proxy_pass http://openhuman-server:8080;
+#         proxy_pass http://omni2api-server:8080;
 #         proxy_http_version 1.1;
 #         proxy_set_header Upgrade $http_upgrade;
 #         proxy_set_header Connection "upgrade";

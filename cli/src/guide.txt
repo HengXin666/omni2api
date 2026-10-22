@@ -6,6 +6,14 @@ SETUP   none if `omni2api up` runs on this machine: URL and responder key come
         from ~/.omni2api/endpoint.json. Otherwise OH_SEAT_URL + OH_SEAT_KEY_FILE
         (a file with a responder-scope ohk_ key) or OH_SEAT_KEY.
 
+YOUR NAME   callers talk to a model name, and that name is yours: on first
+        use, check `oh-seat name`. If the user asked for a specific name,
+        set exactly that; otherwise pick one you like and set it with
+        `oh-seat name <name>`. Until someone chooses, you answer to the
+        placeholder "omni2api". A name pinned by the user (at
+        `omni2api up --model …`) is locked: `oh-seat name` then only
+        reports it, and a set attempt is refused — accept and move on.
+
 THE LOOP
   oh-seat next                        wait (<=100s) for a message; prints it and,
                                       the first time, the caller's tool signatures

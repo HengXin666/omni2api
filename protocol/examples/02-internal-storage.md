@@ -1,6 +1,6 @@
 # Example 2: Internal Storage
 
-How OpenHuman persists the message from Example 1 across its data stores.
+How Omni2API persists the message from Example 1 across its data stores.
 
 ---
 
@@ -86,7 +86,7 @@ SSE delivery.
 ### Event Publication
 
 ```
-Subject: openhuman.events.cnv_0189abc123def456
+Subject: omni2api.events.cnv_0189abc123def456
 
 Message:
 {

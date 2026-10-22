@@ -430,11 +430,11 @@ pub(crate) async fn handle_client_message(
 /// end up parked in the outbound queue and surface much later, detached
 /// from whatever it was meant to reassure.
 pub(crate) async fn announce_online(app: &AppState, human_id: &str) {
-    let notice = std::env::var("OPENHUMAN_ONLINE_NOTICE")
+    let notice = std::env::var("OMNI2API_ONLINE_NOTICE")
         .ok()
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| "[OpenHuman 提示]: 人类专家已上线，马上回复你。\n\n".to_string());
+        .unwrap_or_else(|| "[Omni2API 提示]: 人类专家已上线，马上回复你。\n\n".to_string());
 
     for conversation_id in app.reply.conversations_with_waiters().await {
         let belongs = match app.conversation.get(&conversation_id).await {

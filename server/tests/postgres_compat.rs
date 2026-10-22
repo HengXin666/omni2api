@@ -11,12 +11,12 @@
 //!
 //! Run with:
 //! ```sh
-//! $env:DATABASE_URL = "postgres://openhuman:openhuman@localhost:5432/openhuman"
+//! $env:DATABASE_URL = "postgres://omni2api:omni2api@localhost:5432/omni2api"
 //! cargo test --test postgres_compat -- --ignored
 //! ```
 
-use openhuman_server::storage::postgres::{InMemoryReplyRegistry, PostgresStore};
-use openhuman_server::storage::traits::{
+use omni2api_server::storage::postgres::{InMemoryReplyRegistry, PostgresStore};
+use omni2api_server::storage::traits::{
     ConversationRepository, IdentityRepository, MessageRepository, ReplyRegistry,
 };
 
@@ -24,11 +24,11 @@ use chrono::Utc;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use openhuman_server::model::content::ContentBlock;
-use openhuman_server::model::identity::{
+use omni2api_server::model::content::ContentBlock;
+use omni2api_server::model::identity::{
     AgentIdentity, ApiKey, ClientType, HumanIdentity, HumanStatus, ParticipantRef,
 };
-use openhuman_server::model::message::{Message, MessageStatus, MessageVisibility};
+use omni2api_server::model::message::{Message, MessageStatus, MessageVisibility};
 
 /// Skip tests if DATABASE_URL is not set or PostgreSQL is not available.
 async fn get_store() -> Option<PostgresStore> {
@@ -195,7 +195,7 @@ async fn test_pg_conversation_scoped_by_human() {
     // Seed a second human so the FK on conversation_participants holds.
     let now = chrono::Utc::now();
     store
-        .insert_human(openhuman_server::model::identity::HumanIdentity {
+        .insert_human(omni2api_server::model::identity::HumanIdentity {
             id: "hum_demo_bob".to_string(),
             display_name: "Bob".to_string(),
             avatar_url: None,
@@ -375,7 +375,7 @@ async fn test_pg_full_storage_chain() {
     assert_eq!(p.human.id, "hum_test_001");
     assert_eq!(
         p.api_key.key_hash.as_deref(),
-        Some(openhuman_server::crypto::sha256_hex("ohk_test_key").as_str()),
+        Some(omni2api_server::crypto::sha256_hex("ohk_test_key").as_str()),
         "Resolved principal must carry the SHA-256 digest"
     );
 

@@ -1,4 +1,4 @@
-# OpenHuman - Local development infrastructure
+# Omni2API - Local development infrastructure
 #
 # PostgreSQL only: Redis and NATS used to be started here, but nothing in
 # the runtime reads from them, so a compose file that offers them implies
@@ -15,13 +15,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-openhuman}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openhuman}
-      POSTGRES_DB: ${POSTGRES_DB:-openhuman}
+      POSTGRES_USER: ${POSTGRES_USER:-omni2api}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omni2api}
+      POSTGRES_DB: ${POSTGRES_DB:-omni2api}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openhuman}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omni2api}"]
       interval: 5s
       timeout: 3s
       retries: 5

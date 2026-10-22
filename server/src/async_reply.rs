@@ -42,9 +42,9 @@ pub const DEFAULT_WAIT_SECS: u64 = 30;
 /// briefly lets both land in one assistant message, which is what the
 /// protocol allows and what real clients expect.
 ///
-/// Set `OPENHUMAN_MERGE_WINDOW_MS=0` to submit every action immediately.
+/// Set `OMNI2API_MERGE_WINDOW_MS=0` to submit every action immediately.
 pub fn merge_window() -> Duration {
-    let ms = std::env::var("OPENHUMAN_MERGE_WINDOW_MS")
+    let ms = std::env::var("OMNI2API_MERGE_WINDOW_MS")
         .ok()
         .and_then(|v| v.trim().parse::<u64>().ok())
         .unwrap_or(2000);

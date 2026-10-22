@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Verify OpenHuman's core "cognitive protection" claim against the live server.
+Verify Omni2API's core "cognitive protection" claim against the live server.
 
 Sends a REAL captured WorkBuddy request (23k-char user turn: system-reminders,
 identity files, tool schemas) and checks what the HUMAN actually receives on

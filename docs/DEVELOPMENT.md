@@ -20,12 +20,12 @@ deploy/   Docker Compose, K8s, nginx
 
 ```bash
 cd server
-OPENHUMAN_BACKEND=memory OPENHUMAN_PORT=8080 cargo run
+OMNI2API_BACKEND=memory OMNI2API_PORT=8080 cargo run
 cargo test
 ```
 
 PostgreSQL: `docker compose -f deploy/docker/docker-compose.yml up -d`, then
-`OPENHUMAN_BACKEND=postgres DATABASE_URL=... cargo run`.
+`OMNI2API_BACKEND=postgres DATABASE_URL=... cargo run`.
 
 ## oh-seat
 

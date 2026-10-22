@@ -46,10 +46,12 @@ detaches the same way when there is no terminal, so it never hangs a shell tool)
 - `base_url (local)` — `http://127.0.0.1:8080/v1`
 - `base_url (public)` — an `https://…/v1` address reachable from anywhere. It
   tries a Cloudflare quick tunnel first (cloudflared is downloaded on first
-  run), then localhost.run and pinggy through the system `ssh` if Cloudflare
-  is unreachable.
+  run), then pinggy through the system `ssh` if Cloudflare is unreachable.
 - `api_key` — the caller key
-- `model` — `openhuman-human`
+- `model` — the name callers use. Until someone chooses one it is the
+  placeholder `omni2api`: the seat names itself in step 5, or the user pins
+  a name with `omni2api up -d --model <name>` (a pinned name wins and the
+  seat cannot change it).
 
 The same values are in `~/.omni2api/endpoint.json`. `omni2api status` prints
 them again, `omni2api down` stops everything. Keys persist across restarts;
@@ -61,7 +63,7 @@ the quick-tunnel address changes on each `up`.
 curl -s "$PUBLIC_BASE_URL/models" -H "Authorization: Bearer $CALLER_KEY"
 ```
 
-should list `openhuman-human`.
+should list the current model name (`omni2api` until the seat names itself).
 
 ## 4. Tell the user
 
@@ -70,7 +72,7 @@ Give them exactly this, filled in:
 ```
 Base URL:  <public base_url>      (or <local base_url> on this machine)
 API key:   <caller key>
-Model:     openhuman-human
+Model:     <the current model name — `oh-seat name` shows it; yours, once you have named yourself in step 5>
 Works in any OpenAI-compatible tool (Chat Completions, Responses) and as an Anthropic base URL.
 ```
 
@@ -90,14 +92,23 @@ oh-seat reply "…" # answer it
 tools (shell, file edits…) are yours through `oh-seat tool`; see the guide.
 The API answers only while something keeps running `oh-seat next`.
 
+First, name yourself: callers address you by a model name, and it is yours
+to choose. Run `oh-seat name` to see the current one. If the user asked for
+a specific name, set exactly that (`oh-seat name <name>`); otherwise pick
+one you like. Do this before step 4, so the user receives the real name.
+If the name is reported as pinned, the user chose it at `up` time — use it
+as it is.
+
 ## Options
 
 - Fixed domain: create a named tunnel in Cloudflare Zero Trust, then
   `OMNI2API_TUNNEL_TOKEN=… OMNI2API_PUBLIC_URL=https://api.example.com omni2api up -d`.
 - Local only: `omni2api up -d --no-tunnel`. Another port: `--port 9000`.
 - Fixed keys: `OMNI2API_CALLER_KEY` / `OMNI2API_RESPONDER_KEY`.
+- A model name of the user's choosing: `omni2api up -d --model <name>`
+  (or `OMNI2API_MODEL`). Without it, the seat names itself.
 - A long-lived multi-user server with PostgreSQL: `omni2api serve` with
-  `OPENHUMAN_BACKEND=postgres` and `DATABASE_URL` (see `deploy/`).
+  `OMNI2API_BACKEND=postgres` and `DATABASE_URL` (see `deploy/`).
 
 ## Troubleshooting
 
@@ -110,8 +121,7 @@ The API answers only while something keeps running `oh-seat next`.
   1. Run `omni2api up` on a machine with normal internet access (the user's
      own computer). The seat can stay where you are only if your network lets
      you reach that machine's URL; otherwise sit in the seat on that machine too.
-  2. `--tunnel localhost.run` or `--tunnel pinggy` (ssh on port 22 / 443),
-     if your filter allows those.
+  2. `--tunnel pinggy` (ssh on port 443), if your filter allows it.
   3. A fixed domain the filter allows: named tunnel (`OMNI2API_TUNNEL_TOKEN`)
      or `omni2api serve` on a server.
   A URL marked unverified may still work from outside: the check runs from
@@ -124,8 +134,12 @@ The API answers only while something keeps running `oh-seat next`.
   through it too (a browser-only proxy is not enough), then retry. Long
   term: a fixed domain via a named tunnel.
 - Tunnel logs: `~/.omni2api/tunnel-<provider>.log`. Free tunnels can die;
-  `up` notices within ~3 minutes, opens a new one and rewrites
-  endpoint.json, so re-read it and give the user the new URL.
+  `up` watches the one it handed out (by probing it, or — when this
+  machine cannot reach its own URL — by watching the tunnel process) and
+  opens a new one, rewriting endpoint.json. A reopened anonymous tunnel
+  gets a NEW address, so re-read endpoint.json and give the user the new
+  URL; callers already configured with the old one cannot be rescued
+  remotely. For an address that must not change, use a named tunnel.
 - cloudflared download fails (TLS-intercepting proxy, blocked GitHub): fetch
   the file named in the error another way and save it into `~/.omni2api/bin/`.
 - 401: wrong key. Callers use `caller_key`, the seat uses `responder_key`.

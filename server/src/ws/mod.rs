@@ -5,14 +5,14 @@
 //! ```text
 //!   Agent Client
 //!       ↓ POST /v1/chat/completions
-//!   OpenHuman Server
+//!   Omni2API Server
 //!       ├── MessageRepository       (stores agent's message)
 //!       ├── ReplyRegistry            (registers SSE reply channel)
 //!       └── ConnectionRegistry       (pushes message.received to human)
 //!                                        ↓
 //!                                    Human Client (WS, multi-device)
 //!                                        ↓ reply.send
-//!   OpenHuman Server
+//!   Omni2API Server
 //!       ├── ReplyRegistry            (delivers to SSE)
 //!       └── MessageRepository        (stores human's reply)
 //!       ↓ SSE chunks

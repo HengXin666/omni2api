@@ -9,7 +9,7 @@
 //! 6. `POST /v1/mock/tool-call` endpoint delivers tool_call payload
 //! 7. `parse_reply` correctly distinguishes text vs tool_call
 
-use openhuman_server::openai_compat::{
+use omni2api_server::openai_compat::{
     ChatCompletionChunk, ChatCompletionResponse, ChatContent, ChatMessage, ChatRole,
 };
 
@@ -20,12 +20,12 @@ use serde_json::json;
 #[test]
 fn test_tool_calls_response_serialization() {
     let args = json!({"command": "echo hello"});
-    let resp = ChatCompletionResponse::from_tool_call("Bash", &args);
+    let resp = ChatCompletionResponse::from_tool_call("Bash", &args, "omni2api");
     let j = serde_json::to_value(&resp).unwrap();
 
     // Top-level fields
     assert_eq!(j["object"], "chat.completion");
-    assert_eq!(j["model"], "openhuman-human");
+    assert_eq!(j["model"], "omni2api");
     assert!(j["id"].as_str().unwrap().starts_with("chatcmpl-"));
 
     // Choices
@@ -47,7 +47,7 @@ fn test_tool_calls_response_serialization() {
 
 #[test]
 fn test_text_reply_no_tool_calls_field() {
-    let resp = ChatCompletionResponse::from_human_reply("Hello!");
+    let resp = ChatCompletionResponse::from_human_reply("Hello!", "omni2api");
     let j = serde_json::to_value(&resp).unwrap();
     // tool_calls should be absent (skip_serializing_if = "Option::is_none")
     assert!(j["choices"][0]["message"].get("tool_calls").is_none());
@@ -59,12 +59,12 @@ fn test_text_reply_no_tool_calls_field() {
 #[test]
 fn test_role_tool_message_full_round_trip() {
     // 1. Agent sends user message
-    // 2. OpenHuman returns tool_calls (assistant message)
+    // 2. Omni2API returns tool_calls (assistant message)
     // 3. Agent executes tool, sends role=tool message back
 
     // Step 2: tool_calls response
     let args = json!({"file_path": "/tmp/test.txt"});
-    let resp = ChatCompletionResponse::from_tool_call("Read", &args);
+    let resp = ChatCompletionResponse::from_tool_call("Read", &args, "omni2api");
     let resp_json = serde_json::to_value(&resp).unwrap();
     let call_id = resp_json["choices"][0]["message"]["tool_calls"][0]["id"]
         .as_str()
@@ -147,6 +147,7 @@ fn test_tool_call_delta_chunk_serialization() {
         "call_abc",
         "Bash",
         r#"{"command":"ls"}"#,
+        "omni2api",
     );
     let j = serde_json::to_value(&chunk).unwrap();
 
@@ -169,7 +170,7 @@ fn test_tool_call_delta_chunk_serialization() {
 
 #[test]
 fn test_finish_tool_calls_chunk() {
-    let chunk = ChatCompletionChunk::finish_tool_calls("chatcmpl-test");
+    let chunk = ChatCompletionChunk::finish_tool_calls("chatcmpl-test", "omni2api");
     let j = serde_json::to_value(&chunk).unwrap();
 
     assert_eq!(j["choices"][0]["finish_reason"], "tool_calls");
@@ -180,7 +181,7 @@ fn test_finish_tool_calls_chunk() {
 
 #[test]
 fn test_normal_finish_chunk_still_works() {
-    let chunk = ChatCompletionChunk::finish("chatcmpl-test");
+    let chunk = ChatCompletionChunk::finish("chatcmpl-test", "omni2api");
     let j = serde_json::to_value(&chunk).unwrap();
     assert_eq!(j["choices"][0]["finish_reason"], "stop");
 }
@@ -209,9 +210,9 @@ fn test_multiple_tool_calls_in_assistant_message() {
 // ── 6. Integration: mock/tool-call endpoint ──
 
 mod integration {
-    use openhuman_server::build_router;
-    use openhuman_server::storage::memory::MemoryStore;
-    use openhuman_server::storage::AppState;
+    use omni2api_server::build_router;
+    use omni2api_server::storage::memory::MemoryStore;
+    use omni2api_server::storage::AppState;
     use serde_json::json;
 
     const DEMO_KEY: &str = "ohk_demo_alice_codex";
@@ -219,7 +220,7 @@ mod integration {
     fn test_app() -> axum::Router {
         // The /v1/mock/* harness is disabled unless explicitly enabled;
         // these tests drive turns through it, so opt in for the test run.
-        std::env::set_var("OPENHUMAN_MOCK_ENDPOINTS", "1");
+        std::env::set_var("OMNI2API_MOCK_ENDPOINTS", "1");
         let store = MemoryStore::seeded();
         let state = AppState::from_store(store);
         build_router(state)
@@ -247,7 +248,7 @@ mod integration {
                     .post(&url)
                     .header("Authorization", format!("Bearer {}", DEMO_KEY))
                     .json(&json!({
-                        "model": "openhuman-human",
+                        "model": "omni2api",
                         "messages": [{"role": "user", "content": "list files"}],
                         "stream": false,
                         "tools": [{
@@ -325,7 +326,7 @@ mod integration {
                     .post(&url)
                     .header("Authorization", format!("Bearer {}", DEMO_KEY))
                     .json(&json!({
-                        "model": "openhuman-human",
+                        "model": "omni2api",
                         "messages": [{"role": "user", "content": "list files"}],
                         "stream": true,
                         "tools": [{
@@ -420,8 +421,14 @@ fn test_parallel_tool_call_deltas_carry_their_index() {
     // Clients accumulate streamed tool calls by index: every call at index 0
     // folds three parallel calls into one.
     for i in 0..3u32 {
-        let chunk =
-            ChatCompletionChunk::tool_call_delta_at("c", i, &format!("call_{i}"), "read", "{}");
+        let chunk = ChatCompletionChunk::tool_call_delta_at(
+            "c",
+            i,
+            &format!("call_{i}"),
+            "read",
+            "{}",
+            "omni2api",
+        );
         let j = serde_json::to_value(&chunk).unwrap();
         assert_eq!(j["choices"][0]["delta"]["tool_calls"][0]["index"], i);
     }

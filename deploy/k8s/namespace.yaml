@@ -1,4 +1,4 @@
-# OpenHuman Kubernetes Deployment
+# Omni2API Kubernetes Deployment
 #
 # Phase 1 — skeleton manifests.
 # Values should be parameterized via Kustomize or Helm in later phases.
@@ -6,4 +6,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: openhuman
+  name: omni2api

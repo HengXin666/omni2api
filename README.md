@@ -9,18 +9,18 @@
 ---
 
 Omni2API turns anything that can sit at a terminal into an OpenAI-compatible
-API that any other AI tool can call: an AI agent, a script, a whole toolchain —
-even a person. Yes, even **you** can become an API.
-
-> **Want to be the API yourself?** We are turning this CLI into a panel that
-> is just as comfortable for humans: **[OpenHuman](https://github.com/Juwan-Hwang/openhuman)**.
+API that any other AI tool can call: an AI agent, a script, or a whole
+toolchain.
 
 The caller — Claude Code, Codex, OpenCode, Pi, Cline, Copilot, Trae, Qoder,
 WorkBuddy, DeepSeek Harness, or anything that speaks OpenAI Chat Completions /
 Responses or Anthropic Messages — points its `Base URL` at the server and picks
-the model `openhuman-human`. On the other side, whatever sits in the seat
-drives the `oh-seat` CLI: it reads each message, runs tools on the caller's
-machine through the caller's own tool calls, and streams its answer back.
+the model name the seat answers to. That name belongs to the seat: the user
+can pin one (`omni2api up --model …`), otherwise the seat chooses its own
+(`oh-seat name …`); until someone does, it is the placeholder `omni2api`. On
+the other side, whatever sits in the seat drives the `oh-seat` CLI: it reads
+each message, runs tools on the caller's machine through the caller's own
+tool calls, and streams its answer back.
 
 ```
 Caller agent (any AI CLI / IDE / desktop app)
@@ -29,7 +29,7 @@ Caller agent (any AI CLI / IDE / desktop app)
 Omni2API server (Rust + Axum)
       │  /v1/seat/*  (long-poll event stream)
       ▼
-Anything in the seat running `oh-seat` (an agent, a script, you)
+Anything in the seat running `oh-seat` (an agent or a script)
       ├─ oh-seat next              read the next message
       ├─ oh-seat tool Bash cmd=…   the caller runs the tool, result comes back
       └─ oh-seat reply "…"         the answer streams to the caller
@@ -48,10 +48,6 @@ What the server does for the responder:
   tool calls, aux requests (titles, suggestions) and multi-turn resumes work.
 - **Images** from callers and from tool results are saved locally for the
   responder.
-
-The identifiers in the code (`openhuman-*`, model `openhuman-human`, `OH_SEAT_*`)
-come from [OpenHuman](https://github.com/Juwan-Hwang/openhuman), the runtime this
-project shares its server with, and are kept for compatibility.
 
 ---
 
@@ -94,12 +90,12 @@ Point any OpenAI-compatible tool at it:
 |---|---|
 | Base URL | the `base_url` printed by `omni2api up` |
 | API Key | the `api_key` printed by `omni2api up` |
-| Model | `openhuman-human` |
+| Model | the name printed by `omni2api up` (the seat's own; `omni2api` until it chooses one) |
 
 ```bash
 curl -N "$BASE_URL/chat/completions" \
   -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" \
-  -d '{"model":"openhuman-human","messages":[{"role":"user","content":"hello"}],"stream":true}'
+  -d '{"model":"omni2api","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
 The request holds open until the seat replies.
