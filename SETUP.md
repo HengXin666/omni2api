@@ -1,7 +1,10 @@
 # Setting up Omni2API (for the AI agent doing it)
 
 Your user said something like "set up omni2api" or "turn yourself into an API".
-Do every step yourself; the user should only receive the result in step 4.
+Do every step yourself, all six of them, in order. The job is NOT done when
+the user has the config (step 5): it is done when you are sitting in the
+seat, answering (step 6). The user must never have to ask you to go and
+answer — if they have to, the setup failed at the last step.
 No server, database, domain or account is needed.
 
 ## 1. Install
@@ -49,7 +52,7 @@ detaches the same way when there is no terminal, so it never hangs a shell tool)
   run), then pinggy through the system `ssh` if Cloudflare is unreachable.
 - `api_key` — the caller key
 - `model` — the name callers use. Until someone chooses one it is the
-  placeholder `omni2api`: the seat names itself in step 5, or the user pins
+  placeholder `omni2api`: the seat names itself in step 4, or the user pins
   a name with `omni2api up -d --model <name>` (a pinned name wins and the
   seat cannot change it).
 
@@ -65,39 +68,62 @@ curl -s "$PUBLIC_BASE_URL/models" -H "Authorization: Bearer $CALLER_KEY"
 
 should list the current model name (`omni2api` until the seat names itself).
 
-## 4. Tell the user
+## 4. Name yourself
+
+Callers address a model name, and that name is yours to choose. Run
+`oh-seat name` to see the current one. If the user asked for a specific
+name, set exactly that (`oh-seat name <name>`); otherwise pick one you
+like. Do this now, before step 5, so the user receives the real name.
+If the name is reported as pinned, the user chose it at `up` time — use it
+as it is.
+
+## 5. Tell the user
 
 Give them exactly this, filled in:
 
 ```
 Base URL:  <public base_url>      (or <local base_url> on this machine)
 API key:   <caller key>
-Model:     <the current model name — `oh-seat name` shows it; yours, once you have named yourself in step 5>
+Model:     <the name from step 4>
 Works in any OpenAI-compatible tool (Chat Completions, Responses) and as an Anthropic base URL.
 ```
 
 Never hand out the responder key: it is what answers.
 
-## 5. Be the API
+End the message by saying you are taking the seat now (step 6) — and then
+actually go. Do not ask whether you should, and do not wait to be told.
 
-Requests now wait for whoever sits in the seat. If that is you:
+## 6. Sit in the seat, and stay there
+
+This is the step agents skip, and skipping it silently breaks everything
+above: with nobody sitting here, requests hang until the caller's tool
+times out, or get an offline placeholder. The seat is you.
 
 ```sh
 oh-seat guide     # the full manual, read once
 oh-seat next      # wait for the next request
-oh-seat reply "…" # answer it
+oh-seat reply "…" # answer it, then run `oh-seat next` again
 ```
 
-`oh-seat` finds the local endpoint and responder key by itself. The caller's
-tools (shell, file edits…) are yours through `oh-seat tool`; see the guide.
-The API answers only while something keeps running `oh-seat next`.
+`oh-seat` finds the local endpoint and responder key by itself. The
+caller's tools (shell, file edits…) are yours through `oh-seat tool`; see
+the guide.
 
-First, name yourself: callers address you by a model name, and it is yours
-to choose. Run `oh-seat name` to see the current one. If the user asked for
-a specific name, set exactly that (`oh-seat name <name>`); otherwise pick
-one you like. Do this before step 4, so the user receives the real name.
-If the name is reported as pinned, the user chose it at `up` time — use it
-as it is.
+- Keep the loop going for as long as you can run. Exit 2 just means
+  nothing arrived yet — run `oh-seat next` again. Expect the first
+  request to take a while (the user still has to paste the config into
+  their tool): minutes of silence at the start are normal, not a reason
+  to stop waiting.
+- If your environment supports background or long-running commands, run
+  the loop as one and keep it alive while you do other things.
+- If your environment truly cannot keep you in the loop — your session
+  ends when you send the step-5 message, and nothing can wait — say
+  exactly that in the step-5 message, as a headline, not a footnote:
+  setup is done, but no one is sitting in the seat, and requests will not
+  be answered until an agent runs `oh-seat next`. Never let the user
+  believe the API is being answered when it is not, and never present
+  `oh-seat next` as a command for the user to run in another terminal —
+  sitting here is the agent's job, which is yours.
 
 ## Options
 

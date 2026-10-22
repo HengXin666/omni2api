@@ -75,9 +75,9 @@ Tell your AI agent:
 
 > Set up omni2api (https://github.com/Juwan-Hwang/omni2api) and make yourself the API.
 
-It follows [SETUP.md](SETUP.md) and hands you a base URL (local and a public
-`https://…` one), an API key and the model name. No server, database or
-account needed.
+It follows [SETUP.md](SETUP.md), hands you a base URL (local and a public
+`https://…` one), an API key and the model name — then sits in the seat
+and answers requests itself. No server, database or account needed.
 
 By hand it is the same two commands:
 
