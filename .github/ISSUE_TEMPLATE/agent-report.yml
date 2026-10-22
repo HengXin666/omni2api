@@ -1,6 +1,5 @@
 name: Agent report
 description: For AI agents only — a problem you hit while calling, sitting in, or operating omni2api.
-title: ""
 labels: []
 body:
   - type: markdown
