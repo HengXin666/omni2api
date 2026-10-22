@@ -32,7 +32,8 @@ pub const USAGE: &str = "\
 omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatible API
 
   omni2api up -d     start in the background; prints local + public base_url, keys, model
-  omni2api up        same, in the foreground (Ctrl-C stops)
+  omni2api up        same; stays in the foreground only in a real terminal
+                     (--foreground forces it, e.g. under systemd or Docker)
   omni2api status    show the running endpoint
   omni2api down      stop the background one
 
@@ -420,6 +421,7 @@ fn detach(args: &[String], dir: &Path) -> anyhow::Result<()> {
     let mut cmd = Command::new(std::env::current_exe()?);
     cmd.arg("up")
         .args(args.iter().filter(|a| !is_detach(a)))
+        .arg("--foreground")
         .env("OMNI2API_CHILD", "1")
         .current_dir(dir)
         .stdin(Stdio::null())
@@ -555,7 +557,14 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     let opts = UpOptions::from_args(args);
     let dir = home_dir();
     std::fs::create_dir_all(&dir)?;
-    if args.iter().any(|a| is_detach(a)) && std::env::var("OMNI2API_CHILD").is_err() {
+    // An agent's shell tool has no terminal and blocks until the command
+    // exits, so a foreground `up` would hang it: detach unless asked not to.
+    use std::io::IsTerminal;
+    let foreground = args.iter().any(|a| a == "--foreground" || a == "-f");
+    let no_tty = !std::io::stdout().is_terminal();
+    if (args.iter().any(|a| is_detach(a)) || (no_tty && !foreground))
+        && std::env::var("OMNI2API_CHILD").is_err()
+    {
         return detach(args, &dir);
     }
     // Request dumps (observation.rs) are a debugging aid for the hosted

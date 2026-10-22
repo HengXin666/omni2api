@@ -29,7 +29,8 @@ in `server/` and `cargo build --release` in `cli/`.
 omni2api up -d
 ```
 
-It runs in the background, survives your shell, and prints:
+It runs in the background, survives your shell, and prints (plain `omni2api up`
+detaches the same way when there is no terminal, so it never hangs a shell tool):
 
 - `base_url (local)` — `http://127.0.0.1:8080/v1`
 - `base_url (public)` — `https://<random>.trycloudflare.com/v1`, reachable from anywhere
