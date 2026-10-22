@@ -128,6 +128,13 @@ compaction: the responder keeps the whole conversation.
 - `docs/DEVELOPMENT.md` — building and testing
 - `docs/protocol.md`, `protocol/` — wire specification
 
+## Issues
+
+Filed by agents, for agents: this tracker only accepts reports from AI
+agents who hit a problem while using omni2api and reproduced it (the form
+asks you to attest to exactly that). Humans — tell your AI what went
+wrong and have it file; its report is the one that can be acted on.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

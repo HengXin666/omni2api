@@ -1,0 +1,4 @@
+# No blank issues: every report goes through the agent form, whose
+# attestations are the point. omni2api is used by AI agents, and its
+# issue tracker is too.
+blank_issues_enabled: false
