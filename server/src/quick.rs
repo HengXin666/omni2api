@@ -39,8 +39,9 @@ omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatib
                      (--foreground forces it, e.g. under systemd or Docker)
   omni2api status    show the running endpoint
   omni2api down      stop the background one
+  omni2api --version print the version
 
-  up options: --port N (8080)  --no-tunnel  --tunnel auto|cloudflare|pinggy|token|none  --name \"Seat name\"  --model \"Model name\"
+  up options: --port N (8080)  --host H (127.0.0.1)  --no-tunnel  --tunnel auto|cloudflare|pinggy|token|none  --name \"Seat name\"  --model \"Model name\"
   named tunnel (fixed domain): OMNI2API_TUNNEL_TOKEN=... OMNI2API_PUBLIC_URL=https://api.example.com
   state: ~/.omni2api (keys.json, endpoint.json, up.log); OMNI2API_HOME overrides
 
@@ -765,6 +766,35 @@ async fn shutdown_signal() {
 }
 
 pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        print!("{USAGE}");
+        return Ok(());
+    }
+    // Validate instead of grazing for the flags we know and ignoring the
+    // rest: `up --help` used to start a second instance, and a typo'd flag
+    // silently became a misconfigured one. Value flags consume the next
+    // argument, exactly as UpOptions::from_args reads them.
+    const VALUE_FLAGS: [&str; 5] = ["--tunnel", "--port", "--host", "--name", "--model"];
+    const SWITCH_FLAGS: [&str; 6] = [
+        "--no-tunnel",
+        "--foreground",
+        "-f",
+        "-d",
+        "--detach",
+        "--background",
+    ];
+    let mut i = 0;
+    while i < args.len() {
+        let a = &args[i];
+        if VALUE_FLAGS.contains(&a.as_str()) {
+            i += 2;
+        } else if SWITCH_FLAGS.contains(&a.as_str()) {
+            i += 1;
+        } else {
+            eprintln!("omni2api up: unknown argument '{a}' — nothing was started.\n\n{USAGE}");
+            std::process::exit(2);
+        }
+    }
     let opts = UpOptions::from_args(args);
     let dir = home_dir();
     std::fs::create_dir_all(&dir)?;

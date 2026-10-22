@@ -60,6 +60,10 @@ async fn main() -> anyhow::Result<()> {
             print!("{}", omni2api_server::quick::USAGE);
             return Ok(());
         }
+        Some("--version" | "-V" | "version") => {
+            println!("omni2api {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
         Some("serve") => {}
         None if std::path::Path::new(&args[0])
             .file_stem()
@@ -68,7 +72,16 @@ async fn main() -> anyhow::Result<()> {
             print!("{}", omni2api_server::quick::USAGE);
             return Ok(());
         }
-        _ => {}
+        None => {}
+        Some(other) => {
+            // An unrecognized first argument must never fall through to
+            // starting the server — that is how `omni2api --version` (a
+            // read-only probe) used to bind port 8080, and how a typo'd
+            // subcommand quietly became a server nobody asked for.
+            eprintln!("omni2api: unknown command '{other}' — nothing was started.\n");
+            eprint!("{}", omni2api_server::quick::USAGE);
+            std::process::exit(2);
+        }
     }
 
     // Only tokenizers that load can be chosen; a default naming anything
