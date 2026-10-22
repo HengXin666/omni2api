@@ -367,7 +367,10 @@ async fn wait_reachable(public: &str, caller_key: &str) -> bool {
         return false;
     };
     let url = format!("{}/v1/models", public.trim_end_matches('/'));
-    for _ in 0..30 {
+    // Bounded: on a filtered network every provider would otherwise burn
+    // minutes before `up` gives its answer.
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
+    while std::time::Instant::now() < deadline {
         if let Ok(r) = client.get(&url).bearer_auth(caller_key).send().await {
             if r.status().is_success() {
                 return true;
@@ -784,11 +787,115 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
 
     let (tunnel_children, public, provider, verified) =
         open_tunnel(&opts, &dir, &local, &keys.caller_key).await;
-    let mut info = endpoint_json(&local, public.as_deref(), &keys);
+    publish_endpoint(
+        &dir,
+        &local,
+        &keys,
+        &opts,
+        public.as_deref(),
+        provider.as_deref(),
+        verified,
+    )?;
+    let children = std::sync::Arc::new(std::sync::Mutex::new(tunnel_children));
+    // Free tunnels die silently (pinggy after 60 min, others whenever).
+    // Watch the URL we handed out and open a new tunnel when it stops
+    // answering; endpoint.json always holds the current one.
+    if verified
+        && matches!(
+            provider.as_deref(),
+            Some("cloudflare" | "localhost.run" | "pinggy")
+        )
+    {
+        let (children, dir, local, keys, opts) = (
+            children.clone(),
+            dir.clone(),
+            local.clone(),
+            keys.clone(),
+            opts.clone(),
+        );
+        let mut current = public.clone().unwrap_or_default();
+        tokio::spawn(async move {
+            let mut misses = 0;
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await;
+                if probe_once(&current, &keys.caller_key).await {
+                    misses = 0;
+                    continue;
+                }
+                misses += 1;
+                if misses < 3 {
+                    continue;
+                }
+                misses = 0;
+                eprintln!("omni2api: {current} stopped answering; opening a new tunnel");
+                for mut c in children
+                    .lock()
+                    .map(|mut v| std::mem::take(&mut *v))
+                    .unwrap_or_default()
+                {
+                    let _ = c.kill();
+                }
+                let (new_children, public, provider, verified) =
+                    open_tunnel(&opts, &dir, &local, &keys.caller_key).await;
+                if let Ok(mut v) = children.lock() {
+                    *v = new_children;
+                }
+                let _ = publish_endpoint(
+                    &dir,
+                    &local,
+                    &keys,
+                    &opts,
+                    public.as_deref(),
+                    provider.as_deref(),
+                    verified,
+                );
+                if let Some(p) = public {
+                    eprintln!("omni2api: new public URL {p}");
+                    current = p;
+                }
+            }
+        });
+    }
+
+    let res = tokio::select! {
+        r = server => r.map_err(anyhow::Error::from).and_then(|r| r.map_err(anyhow::Error::from)),
+        _ = shutdown_signal() => Ok(()),
+    };
+    for mut c in children
+        .lock()
+        .map(|mut v| std::mem::take(&mut *v))
+        .unwrap_or_default()
+    {
+        let _ = c.kill();
+    }
+    res
+}
+
+async fn probe_once(public: &str, caller_key: &str) -> bool {
+    let Ok(client) = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+    else {
+        return true;
+    };
+    let url = format!("{}/v1/models", public.trim_end_matches('/'));
+    matches!(client.get(&url).bearer_auth(caller_key).send().await, Ok(r) if r.status().is_success())
+}
+
+fn publish_endpoint(
+    dir: &std::path::Path,
+    local: &str,
+    keys: &Keys,
+    opts: &UpOptions,
+    public: Option<&str>,
+    provider: Option<&str>,
+    verified: bool,
+) -> anyhow::Result<()> {
+    let mut info = endpoint_json(local, public, keys);
     info["tunnel"] = serde_json::json!(provider);
-    if provider.as_deref() == Some("pinggy") {
+    if provider == Some("pinggy") {
         info["public_note"] = serde_json::json!(
-            "pinggy free tunnels expire after 60 minutes; run `omni2api up` again for a new URL"
+            "pinggy free tunnels expire after 60 minutes; omni2api opens a new one and updates this file"
         );
     }
     if public.is_some() && !verified {
@@ -805,15 +912,7 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
         &serde_json::to_string_pretty(&info)?,
     )?;
     print_banner(&info);
-
-    let res = tokio::select! {
-        r = server => r.map_err(anyhow::Error::from).and_then(|r| r.map_err(anyhow::Error::from)),
-        _ = shutdown_signal() => Ok(()),
-    };
-    for mut c in tunnel_children {
-        let _ = c.kill();
-    }
-    res
+    Ok(())
 }
 
 #[cfg(test)]

@@ -76,10 +76,6 @@ Works in any OpenAI-compatible tool (Chat Completions, Responses) and as an Anth
 
 Never hand out the responder key: it is what answers.
 
-Also tell them: set the tool's request timeout as high as it allows (300 s
-or more). You answer turn by turn, so a reply can take a minute; a tool that
-gives up early gets the reply on its next request instead ("one step late").
-
 ## 5. Be the API
 
 Requests now wait for whoever sits in the seat. If that is you:
@@ -127,8 +123,9 @@ The API answers only while something keeps running `oh-seat next`.
   their proxy, in TUN / system-wide mode so the AI tool's traffic goes
   through it too (a browser-only proxy is not enough), then retry. Long
   term: a fixed domain via a named tunnel.
-- Tunnel logs: `~/.omni2api/tunnel-<provider>.log`. Free tunnels can die
-  silently; if requests stop arriving, `omni2api up -d` again (new URL).
+- Tunnel logs: `~/.omni2api/tunnel-<provider>.log`. Free tunnels can die;
+  `up` notices within ~3 minutes, opens a new one and rewrites
+  endpoint.json, so re-read it and give the user the new URL.
 - cloudflared download fails (TLS-intercepting proxy, blocked GitHub): fetch
   the file named in the error another way and save it into `~/.omni2api/bin/`.
 - 401: wrong key. Callers use `caller_key`, the seat uses `responder_key`.
