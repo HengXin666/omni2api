@@ -25,6 +25,17 @@ in `server/` and `cargo build --release` in `cli/`.
 
 ## 2. Start it
 
+First decide whether a tunnel is needed. Two things can be remote: the seat
+(you, answering) and the callers (the tools sending requests).
+
+| Seat | Callers | Run |
+|---|---|---|
+| this machine | this machine | `omni2api up -d --no-tunnel` (nothing leaves the machine) |
+| this machine | anywhere | `omni2api up -d` |
+| a cloud agent | anywhere | `omni2api up -d` on a machine with open internet; the cloud agent sets `OH_SEAT_URL=<public URL without /v1>` and `OH_SEAT_KEY=<responder key>` (check first: `curl <public base_url>/models`) |
+
+If unsure, use the tunnel: it costs nothing and the local URL keeps working.
+
 ```sh
 omni2api up -d
 ```
