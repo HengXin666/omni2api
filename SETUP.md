@@ -166,12 +166,33 @@ the guide.
   1. Run `omni2api up` on a machine with normal internet access (the user's
      own computer). The seat can stay where you are only if your network lets
      you reach that machine's URL; otherwise sit in the seat on that machine too.
-  2. `--tunnel pinggy` (ssh on port 443), if your filter allows it.
+  2. `--tunnel pinggy` (ssh on port 443), if your filter allows it. If the
+     only way out is an HTTP proxy, see the next bullet before concluding
+     anything.
   3. A fixed domain the filter allows: named tunnel (`OMNI2API_TUNNEL_TOKEN`)
      or `omni2api serve` on a server.
   A URL marked unverified may still work from outside: the check runs from
   this same filtered machine. Ask the user to open `<public base_url>/models` in a
   browser: any JSON answer, even 401, means it is reachable.
+  Work these routes in order before asking the user anything. A setup that
+  ends with the user picking between workarounds is not finished: deliver
+  what works (step 5), sit down (step 6), and report what you did.
+- Only an HTTP proxy gets out (`HTTPS_PROXY` is set — the usual agent
+  sandbox): cloudflared cannot use a proxy, so its tunnel times out. That
+  is expected, not a bug; do not debug it. pinggy runs over the system
+  `ssh`, and ssh can go through the proxy: put a wrapper named `ssh` first
+  in PATH that adds a ProxyCommand and then calls the real ssh —
+
+  ```sh
+  #!/bin/sh
+  exec /usr/bin/ssh -o ProxyCommand="nc -X connect -x <proxy-host>:<port> %h %p" "$@"
+  ```
+
+  Take host:port from `$HTTPS_PROXY` (`ncat --proxy <host>:<port>
+  --proxy-type http %h %p` also works as the ProxyCommand). Then run
+  `omni2api up -d --tunnel pinggy`. Judge pinggy by its SSH banner: its
+  port 443 speaks SSH, so an HTTPS probe failing with TLS errors proves
+  nothing either way.
 - The user's tool says "could not reach" the public URL while it works from
   elsewhere: the user's own network cannot reach that tunnel domain (seen in
   mainland China with trycloudflare.com and pinggy). Tell the user to turn on
