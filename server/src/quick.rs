@@ -257,15 +257,24 @@ pub async fn ensure_cloudflared(dir: &Path) -> anyhow::Result<PathBuf> {
     })?;
     let url = format!("https://github.com/cloudflare/cloudflared/releases/latest/download/{asset}");
     eprintln!("omni2api: downloading cloudflared ({asset})…");
-    let bytes = reqwest::Client::builder()
-        .timeout(Duration::from_secs(300))
-        .build()?
-        .get(&url)
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?;
+    let fetched = async {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(300))
+            .build()?
+            .get(&url)
+            .send()
+            .await?
+            .error_for_status()?
+            .bytes()
+            .await
+    }
+    .await;
+    let bytes = fetched.map_err(|e| {
+        anyhow::anyhow!(
+            "download failed ({e}). Get {url} another way (browser, proxy) and save it as {}",
+            local.display()
+        )
+    })?;
     std::fs::create_dir_all(&bin_dir)?;
     if asset.ends_with(".tgz") {
         let tgz = bin_dir.join(asset);
@@ -329,7 +338,12 @@ pub fn start_tunnel(
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let mut sent = false;
+        let mut log = tunnel_log("cloudflare");
         for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            if let Some(f) = log.as_mut() {
+                use std::io::Write;
+                let _ = writeln!(f, "{line}");
+            }
             if !sent {
                 if let Some(u) = find_quick_url(&line) {
                     let _ = tx.send(u);
@@ -383,7 +397,7 @@ async fn open_tunnel(
         "quick" | "cloudflared" => vec!["cloudflare"],
         other => vec![other],
     };
-    let mut children = Vec::new();
+    let mut children: Vec<(String, Child)> = Vec::new();
     let mut fallback: Option<(String, String)> = None;
     for provider in list {
         let started = match provider {
@@ -398,9 +412,12 @@ async fn open_tunnel(
         };
         match started {
             Ok((child, Some(url))) => {
-                children.push(child);
+                children.push((provider.to_string(), child));
                 if wait_reachable(&url, caller_key).await {
-                    return (children, Some(url), Some(provider.to_string()), true);
+                    // Only the tunnel we hand out stays open: an unreported
+                    // public entry to this machine is not acceptable.
+                    let kept = keep_only(children, provider);
+                    return (kept, Some(url), Some(provider.to_string()), true);
                 }
                 eprintln!("omni2api: {provider}: {url} does not answer from this machine");
                 fallback.get_or_insert((url, provider.to_string()));
@@ -408,7 +425,7 @@ async fn open_tunnel(
             Ok((mut child, None)) => {
                 eprintln!("omni2api: {provider}: no public URL");
                 if provider == "token" {
-                    children.push(child);
+                    children.push((provider.to_string(), child));
                 } else {
                     let _ = child.kill();
                 }
@@ -417,9 +434,33 @@ async fn open_tunnel(
         }
     }
     match fallback {
-        Some((url, p)) => (children, Some(url), Some(p), false),
-        None => (children, None, None, false),
+        Some((url, p)) => (keep_only(children, &p), Some(url), Some(p), false),
+        None => (keep_only(children, "token"), None, None, false),
     }
+}
+
+fn keep_only(children: Vec<(String, Child)>, provider: &str) -> Vec<Child> {
+    children
+        .into_iter()
+        .filter_map(|(p, mut c)| {
+            if p == provider {
+                Some(c)
+            } else {
+                let _ = c.kill();
+                None
+            }
+        })
+        .collect()
+}
+
+/// Each tunnel's own output goes to `~/.omni2api/tunnel-<provider>.log`,
+/// so a tunnel that dies later can be diagnosed.
+fn tunnel_log(provider: &str) -> Option<std::fs::File> {
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(home_dir().join(format!("tunnel-{provider}.log")))
+        .ok()
 }
 
 /// localhost.run (port 22) or pinggy (port 443) through the system `ssh`;
@@ -473,8 +514,14 @@ fn start_ssh_tunnel(provider: &str, local: &str) -> anyhow::Result<(Child, Optio
     .flatten()
     {
         let tx = tx.clone();
+        let name = provider.to_string();
         std::thread::spawn(move || {
+            let mut log = tunnel_log(&name);
             for line in BufReader::new(stream).lines().map_while(Result::ok) {
+                if let Some(f) = log.as_mut() {
+                    use std::io::Write;
+                    let _ = writeln!(f, "{line}");
+                }
                 if let Some(u) = find_ssh_url(&line) {
                     let _ = tx.send(u);
                 }
