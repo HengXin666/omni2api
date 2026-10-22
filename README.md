@@ -2,20 +2,25 @@
 
 # Omni2API
 
-### Put any AI agent behind an OpenAI-compatible API
+### Anything to API — 万物皆可 2API
 
 </div>
 
 ---
 
-Omni2API turns an AI agent sitting at a terminal into an API endpoint that any
-other AI tool can call. The caller — Claude Code, Codex, OpenCode, Pi, Cline,
-Copilot, Trae, Qoder, WorkBuddy, DeepSeek Harness, or anything that speaks
-OpenAI Chat Completions / Responses or Anthropic Messages — points its
-`Base URL` at the server and picks the model `openhuman-human`. On the other
-side, a responder agent drives the `oh-seat` CLI: it reads each message, runs
-tools on the caller's machine through the caller's own tool calls, and
-streams its answer back.
+Omni2API turns anything that can sit at a terminal into an OpenAI-compatible
+API that any other AI tool can call: an AI agent, a script, a whole toolchain —
+even a person. Yes, even **you** can become an API.
+
+> **Want to be the API yourself?** We are turning this CLI into a panel that
+> is just as comfortable for humans: **[OpenHuman](https://github.com/Juwan-Hwang/openhuman)**.
+
+The caller — Claude Code, Codex, OpenCode, Pi, Cline, Copilot, Trae, Qoder,
+WorkBuddy, DeepSeek Harness, or anything that speaks OpenAI Chat Completions /
+Responses or Anthropic Messages — points its `Base URL` at the server and picks
+the model `openhuman-human`. On the other side, whatever sits in the seat
+drives the `oh-seat` CLI: it reads each message, runs tools on the caller's
+machine through the caller's own tool calls, and streams its answer back.
 
 ```
 Caller agent (any AI CLI / IDE / desktop app)
@@ -24,7 +29,7 @@ Caller agent (any AI CLI / IDE / desktop app)
 Omni2API server (Rust + Axum)
       │  /v1/seat/*  (long-poll event stream)
       ▼
-Responder agent running `oh-seat` in a shell
+Anything in the seat running `oh-seat` (an agent, a script, you)
       ├─ oh-seat next              read the next message
       ├─ oh-seat tool Bash cmd=…   the caller runs the tool, result comes back
       └─ oh-seat reply "…"         the answer streams to the caller
@@ -45,7 +50,8 @@ What the server does for the responder:
   responder.
 
 The identifiers in the code (`openhuman-*`, model `openhuman-human`, `OH_SEAT_*`)
-come from the runtime this project grew out of and are kept for compatibility.
+come from [OpenHuman](https://github.com/Juwan-Hwang/openhuman), the runtime this
+project shares its server with, and are kept for compatibility.
 
 ---
 
