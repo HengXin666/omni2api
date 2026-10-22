@@ -12,6 +12,9 @@ Omni2API turns anything that can sit at a terminal into an OpenAI-compatible
 API that any other AI tool can call: an AI agent, a script, or a whole
 toolchain.
 
+> **Want to be the API yourself?** We are turning this CLI into a panel that
+> is just as comfortable for humans: **[OpenHuman](https://github.com/Juwan-Hwang/openhuman)**.
+
 The caller — Claude Code, Codex, OpenCode, Pi, Cline, Copilot, Trae, Qoder,
 WorkBuddy, DeepSeek Harness, or anything that speaks OpenAI Chat Completions /
 Responses or Anthropic Messages — points its `Base URL` at the server and picks
