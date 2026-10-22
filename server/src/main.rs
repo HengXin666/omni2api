@@ -22,6 +22,12 @@ use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Same SIGPIPE reasoning as in oh-seat: piped output (`omni2api status |
+    // head`, agent tooling) must not panic with "Broken pipe".
+    #[cfg(unix)]
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
     let _ = dotenvy::dotenv();
 
     let args: Vec<String> = std::env::args().collect();

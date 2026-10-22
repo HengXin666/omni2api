@@ -341,9 +341,10 @@ dependencies = [
 
 [[package]]
 name = "oh-seat"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
+ "libc",
  "serde",
  "serde_json",
  "ureq",

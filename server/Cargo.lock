@@ -1471,6 +1471,7 @@ dependencies = [
  "futures",
  "hex",
  "jsonwebtoken",
+ "libc",
  "reqwest",
  "serde",
  "serde_json",

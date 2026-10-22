@@ -2514,6 +2514,14 @@ fn run(cli: Cli) -> R<u8> {
 }
 
 fn main() -> ExitCode {
+    // Rust ignores SIGPIPE at startup, so a closed pipe — our output is
+    // piped through `head`, files and other tools all the time — surfaces
+    // as a "failed printing to stdout: Broken pipe" panic. Restore the
+    // default disposition and let the process die quietly instead.
+    #[cfg(unix)]
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
     let cli = Cli::parse();
     match run(cli) {
         Ok(c) => ExitCode::from(c),
