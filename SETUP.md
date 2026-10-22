@@ -97,7 +97,7 @@ first try:
 
 ```
 If your tool can't reach the public URL: turn on your proxy in TUN /
-system-wide mode and retry (a browser-only proxy is not enough).
+system-wide mode and retry.
 ```
 
 End the message by saying you are taking the seat now (step 6) — and then
@@ -167,8 +167,8 @@ the guide.
   elsewhere: the user's own network cannot reach that tunnel domain (seen in
   mainland China with trycloudflare.com and pinggy). Tell the user to turn on
   their proxy, in TUN / system-wide mode so the AI tool's traffic goes
-  through it too (a browser-only proxy is not enough), then retry. Long
-  term: a fixed domain via a named tunnel.
+  through it too, then retry. Long term: a fixed domain via a named
+  tunnel.
 - Tunnel logs: `~/.omni2api/tunnel-<provider>.log`. Free tunnels can die;
   `up` watches the one it handed out (by probing it, or — when this
   machine cannot reach its own URL — by watching the tunnel process) and
