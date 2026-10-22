@@ -1643,21 +1643,11 @@ pub async fn chat_completions(
     // the same answer and one of them would hang until timeout. The caller
     // retries after the first turn closes.
     if !is_async_mode(&headers) && app.reply.has_waiter(&conversation_id).await {
-        // The new message still reaches the human — refusing the turn must
-        // not swallow what the agent just said.
-        push_messages_to_human(&app, inbound_messages, human_id);
-        return (
-            StatusCode::CONFLICT,
-            Json(json!({
-                "error": {
-                    "message": "Another turn is already open on this conversation. Wait for it to finish, then resubmit.",
-                    "type": "conflict",
-                    "code": "turn_already_open",
-                    "conversation_id": conversation_id,
-                }
-            })),
-        )
-            .into_response();
+        // A second request while a turn is open is the same caller
+        // resubmitting (fast client retry, or a tunnel replaying it). The
+        // newest request takes over the turn: register() drops the older
+        // one's channel, so the reply goes to the connection still listening.
+        tracing::info!(conversation_id = %conversation_id, "resubmitted turn supersedes the open one");
     }
 
     if req.stream {
