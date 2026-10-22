@@ -90,6 +90,16 @@ Works in any OpenAI-compatible tool (Chat Completions, Responses) and as an Anth
 
 Never hand out the responder key: it is what answers.
 
+If the user will use the public URL from mainland China (or a similarly
+filtered network), add this line to the message — the free-tunnel domains
+are often unreachable on a direct connection there, and it saves a failed
+first try:
+
+```
+If your tool can't reach the public URL: turn on your proxy in TUN /
+system-wide mode and retry (a browser-only proxy is not enough).
+```
+
 End the message by saying you are taking the seat now (step 6) — and then
 actually go. Do not ask whether you should, and do not wait to be told.
 
