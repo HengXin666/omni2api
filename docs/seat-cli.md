@@ -8,14 +8,19 @@ command at a time.
 
 It is a single static Rust binary (like `gh` and `codex`): no runtime, no
 dependencies, starts instantly. Source: `cli/`. Build: `cargo build --release`
-in `cli/`; release workflow ready at `deploy/ci/oh-seat-release.yml` (copy into `.github/workflows/` to enable; pushing workflows needs a token with `workflow` scope)
-on tags `oh-seat-v*`.
+in `cli/`; releases (with `omni2api`) build on tags `v*`, and `install.sh` /
+`install.ps1` install both.
 
 ## Setup
 
+With `omni2api up` running on the same machine nothing is needed: oh-seat
+reads the URL and responder key from `~/.omni2api/endpoint.json`.
+
+For another server:
+
 ```
-export OH_SEAT_URL=https://api.juwanh.com          # default
-export OH_SEAT_KEY_FILE=~/.openhuman/seat_key      # default; a responder-scope ohk_ key
+export OH_SEAT_URL=https://your-server            # default: local omni2api, else http://127.0.0.1:8080
+export OH_SEAT_KEY_FILE=~/.openhuman/seat_key      # a responder-scope ohk_ key
 ```
 
 `OH_SEAT_KEY` works too but puts the key in shell history. State (cursor,

@@ -59,7 +59,7 @@ project shares its server with, and are kept for compatibility.
 
 ```
 omni2api/
-├── server/      # Rust + Axum server: OpenAI/Anthropic ingress, seat API, storage
+├── server/      # Rust + Axum server (`omni2api` binary): OpenAI/Anthropic ingress, seat API
 ├── cli/         # oh-seat, the responder CLI (single static Rust binary)
 ├── protocol/    # Wire protocol and internal model
 ├── sdks/        # SDK placeholders (python, rust, typescript)
@@ -72,43 +72,41 @@ omni2api/
 
 ## Quick start
 
-### Run the server
+Tell your AI agent:
 
-The default in-memory backend needs no external services:
+> Set up omni2api (https://github.com/Juwan-Hwang/omni2api) and make yourself the API.
 
-```bash
-cd server
-OPENHUMAN_BACKEND=memory OPENHUMAN_PORT=8080 cargo run
-```
+It follows [SETUP.md](SETUP.md) and hands you a base URL (local and a public
+`https://…` one), an API key and the model name. No server, database or
+account needed.
 
-For PostgreSQL set `OPENHUMAN_BACKEND=postgres` and `DATABASE_URL`; see
-`server/.env.example` and `deploy/`.
-
-### Sit in the responder seat
+By hand it is the same two commands:
 
 ```bash
-cd cli && cargo build --release
-export OH_SEAT_URL=http://localhost:8080
-export OH_SEAT_KEY_FILE=~/.openhuman/seat_key   # a responder-scope key
-oh-seat guide                                   # the full manual, written for agents
-oh-seat next                                    # wait for a caller
+curl -fsSL https://raw.githubusercontent.com/Juwan-Hwang/omni2api/main/install.sh | sh   # Windows: irm …/install.ps1 | iex
+omni2api up -d        # prints base_url (local + public), api_key, model
+oh-seat next          # sit in the seat: wait for a request (oh-seat guide for the manual)
 ```
 
-### Point a caller at it
+Point any OpenAI-compatible tool at it:
 
 | Setting | Value |
 |---|---|
-| Base URL | `http://localhost:8080/v1` |
-| API Key | a caller-scope key |
+| Base URL | the `base_url` printed by `omni2api up` |
+| API Key | the `api_key` printed by `omni2api up` |
 | Model | `openhuman-human` |
 
 ```bash
-curl -N http://localhost:8080/v1/chat/completions \
-  -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+curl -N "$BASE_URL/chat/completions" \
+  -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" \
   -d '{"model":"openhuman-human","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
-The request holds open until the responder replies.
+The request holds open until the seat replies.
+
+Optional: a fixed domain through a named Cloudflare tunnel, or a long-lived
+server with PostgreSQL (`omni2api serve`, see `deploy/`). Details in
+[SETUP.md](SETUP.md).
 
 ---
 

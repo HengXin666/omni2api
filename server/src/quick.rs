@@ -28,6 +28,22 @@ use crate::storage::AppState;
 
 pub const MODEL: &str = "openhuman-human";
 
+pub const USAGE: &str = "\
+omni2api — put anything (an AI agent, a script, you) behind an OpenAI-compatible API
+
+  omni2api up -d     start in the background; prints local + public base_url, keys, model
+  omni2api up        same, in the foreground (Ctrl-C stops)
+  omni2api status    show the running endpoint
+  omni2api down      stop the background one
+
+  up options: --port N (8080)  --no-tunnel  --tunnel quick|none|token  --name \"Seat name\"
+  named tunnel (fixed domain): OMNI2API_TUNNEL_TOKEN=... OMNI2API_PUBLIC_URL=https://api.example.com
+  state: ~/.omni2api (keys.json, endpoint.json, up.log); OMNI2API_HOME overrides
+
+Then answer requests with the seat CLI: oh-seat guide
+Advanced: `omni2api serve` runs the full server (OPENHUMAN_BACKEND=postgres for a database).
+";
+
 /// Options for `omni2api up`, from flags and environment.
 #[derive(Debug, Clone)]
 pub struct UpOptions {
@@ -363,10 +379,163 @@ pub fn print_banner(info: &serde_json::Value) {
     println!();
 }
 
+fn is_detach(a: &str) -> bool {
+    a == "-d" || a == "--detach" || a == "--background"
+}
+
+/// `up -d`: start `up` as a background process that outlives this shell,
+/// wait for its endpoint, print it, and return. Built for agents whose
+/// shell tool cannot hold a long-running foreground process.
+fn detach(args: &[String], dir: &Path) -> anyhow::Result<()> {
+    let endpoint = dir.join("endpoint.json");
+    let _ = std::fs::remove_file(&endpoint);
+    if let Some(pid) = read_pid(dir) {
+        if pid_alive(pid) {
+            kill_pid(pid);
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    }
+    let log = std::fs::File::create(dir.join("up.log"))?;
+    let mut cmd = Command::new(std::env::current_exe()?);
+    cmd.arg("up")
+        .args(args.iter().filter(|a| !is_detach(a)))
+        .env("OMNI2API_CHILD", "1")
+        .stdin(Stdio::null())
+        .stdout(log.try_clone()?)
+        .stderr(log);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+        cmd.creation_flags(0x0000_0008 | 0x0000_0200 | 0x0800_0000);
+    }
+    let child = cmd.spawn()?;
+    std::fs::write(dir.join("up.pid"), child.id().to_string())?;
+    for _ in 0..180 {
+        std::thread::sleep(Duration::from_millis(500));
+        if let Some(info) = std::fs::read_to_string(&endpoint)
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        {
+            print_banner(&info);
+            println!(
+                "  Running in the background (pid {}). Log: {}",
+                child.id(),
+                dir.join("up.log").display()
+            );
+            println!("  Stop: omni2api down    Status: omni2api status");
+            println!();
+            return Ok(());
+        }
+        if !pid_alive(child.id()) {
+            break;
+        }
+    }
+    let log = std::fs::read_to_string(dir.join("up.log")).unwrap_or_default();
+    anyhow::bail!("omni2api did not come up. Log:\n{log}")
+}
+
+fn read_pid(dir: &Path) -> Option<u32> {
+    std::fs::read_to_string(dir.join("up.pid"))
+        .ok()?
+        .trim()
+        .parse()
+        .ok()
+}
+
+fn pid_alive(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+    #[cfg(windows)]
+    {
+        Command::new("tasklist")
+            .args(["/FI", &format!("PID eq {pid}"), "/NH"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).contains(&pid.to_string()))
+            .unwrap_or(false)
+    }
+}
+
+fn kill_pid(pid: u32) {
+    #[cfg(unix)]
+    let _ = Command::new("kill").arg(pid.to_string()).status();
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .stdout(Stdio::null())
+        .status();
+}
+
+/// `omni2api status`: is it running, and where.
+pub fn run_status() -> anyhow::Result<()> {
+    let dir = home_dir();
+    let running = read_pid(&dir).filter(|p| pid_alive(*p));
+    match std::fs::read_to_string(dir.join("endpoint.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+    {
+        Some(info) if running.is_some() => {
+            print_banner(&info);
+            println!("  Running (pid {}).", running.unwrap_or(0));
+            Ok(())
+        }
+        _ => {
+            println!("omni2api is not running in the background. Start it: omni2api up -d");
+            std::process::exit(1)
+        }
+    }
+}
+
+/// `omni2api down`: stop the background `up`.
+pub fn run_down() -> anyhow::Result<()> {
+    let dir = home_dir();
+    match read_pid(&dir).filter(|p| pid_alive(*p)) {
+        Some(pid) => {
+            kill_pid(pid);
+            let _ = std::fs::remove_file(dir.join("up.pid"));
+            let _ = std::fs::remove_file(dir.join("endpoint.json"));
+            println!("stopped (pid {pid})");
+        }
+        None => println!("omni2api was not running"),
+    }
+    Ok(())
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("SIGTERM handler");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {}
+            _ = term.recv() => {}
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = tokio::signal::ctrl_c().await;
+    }
+}
+
 pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     let opts = UpOptions::from_args(args);
     let dir = home_dir();
     std::fs::create_dir_all(&dir)?;
+    if args.iter().any(|a| is_detach(a)) && std::env::var("OMNI2API_CHILD").is_err() {
+        return detach(args, &dir);
+    }
     let keys = load_or_mint_keys(&dir)?;
     let state = build_state(&keys, &opts.name).await;
     let app = crate::build_router(state);
@@ -412,7 +581,7 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
 
     let res = tokio::select! {
         r = server => r.map_err(anyhow::Error::from).and_then(|r| r.map_err(anyhow::Error::from)),
-        _ = tokio::signal::ctrl_c() => Ok(()),
+        _ = shutdown_signal() => Ok(()),
     };
     if let Some(mut c) = tunnel_child {
         let _ = c.kill();

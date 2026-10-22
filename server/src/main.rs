@@ -27,7 +27,10 @@ async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     // `up` is for a person or an agent at a terminal: only warnings, so the
     // printed endpoint block stays readable.
-    let default_level = if args.get(1).map(|s| s.as_str()) == Some("up") {
+    let default_level = if matches!(
+        args.get(1).map(|s| s.as_str()),
+        Some("up" | "status" | "down")
+    ) {
         "warn"
     } else {
         "info"
@@ -43,8 +46,23 @@ async fn main() -> anyhow::Result<()> {
         return issue_key(&args[2..]).await;
     }
     // Zero-setup mode: in-memory, keys minted, public tunnel. See quick.rs.
-    if args.get(1).map(|s| s.as_str()) == Some("up") {
-        return openhuman_server::quick::run_up(&args[2..]).await;
+    match args.get(1).map(|s| s.as_str()) {
+        Some("up") => return openhuman_server::quick::run_up(&args[2..]).await,
+        Some("status") => return openhuman_server::quick::run_status(),
+        Some("down") => return openhuman_server::quick::run_down(),
+        Some("help" | "-h" | "--help") => {
+            print!("{}", openhuman_server::quick::USAGE);
+            return Ok(());
+        }
+        Some("serve") => {}
+        None if std::path::Path::new(&args[0])
+            .file_stem()
+            .is_some_and(|s| s == "omni2api") =>
+        {
+            print!("{}", openhuman_server::quick::USAGE);
+            return Ok(());
+        }
+        _ => {}
     }
 
     // Only tokenizers that load can be chosen; a default naming anything
