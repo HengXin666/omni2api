@@ -35,7 +35,7 @@ cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test
 cargo build --release
 ```
 
-Releases build on tags `oh-seat-v*` (`.github/workflows/oh-seat-release.yml`).
+Releases build `omni2api` and `oh-seat` for 5 targets on tags `v*` (`.github/workflows/release.yml`).
 
 ## Conventions
 

@@ -436,6 +436,7 @@ const BUILTIN_TOKENIZERS: [&str; 4] = ["o200k_base", "cl100k_base", "p50k_base",
 
 enum Counter {
     Tiktoken(tiktoken_rs::CoreBPE),
+    #[cfg(feature = "hf-tokenizers")]
     Hf(Box<tokenizers::Tokenizer>),
 }
 
@@ -443,6 +444,7 @@ impl Counter {
     fn count(&self, text: &str) -> u32 {
         match self {
             Counter::Tiktoken(b) => b.encode_with_special_tokens(text).len() as u32,
+            #[cfg(feature = "hf-tokenizers")]
             Counter::Hf(t) => t.encode(text, false).map(|e| e.len() as u32).unwrap_or(0),
         }
     }
@@ -464,6 +466,7 @@ fn registry() -> &'static HashMap<String, Counter> {
                 m.insert(name.to_string(), Counter::Tiktoken(b));
             }
         }
+        #[cfg(feature = "hf-tokenizers")]
         if let Ok(dir) = std::env::var("OPENHUMAN_TOKENIZER_DIR") {
             if let Ok(entries) = std::fs::read_dir(dir.trim()) {
                 for e in entries.flatten() {

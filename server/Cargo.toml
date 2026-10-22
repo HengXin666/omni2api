@@ -19,6 +19,11 @@ name = "omni2api"
 path = "src/main.rs"
 
 [features]
+default = ["hf-tokenizers"]
+# Hugging Face tokenizer.json files in OPENHUMAN_TOKENIZER_DIR (DeepSeek,
+# Qwen…). Optional: release binaries skip it (it pulls in a C regex lib);
+# the built-in tiktoken encodings are always there.
+hf-tokenizers = ["dep:tokenizers"]
 # Enables the /v1/mock/* harness endpoints at compile time. Off by default:
 # the mock endpoints impersonate the human and must never be reachable in
 # production. Integration tests that need them set OPENHUMAN_MOCK_ENDPOINTS=1
@@ -57,7 +62,7 @@ jsonwebtoken = "9"
 sha2 = "0.10"
 anyllm_translate = { version = "0.17", default-features = false }
 tiktoken-rs = "0.7"
-tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.21", default-features = false, features = ["onig"], optional = true }
 hex = "0.4"
 
 # Observability
