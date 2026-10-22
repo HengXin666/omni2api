@@ -400,6 +400,7 @@ fn detach(args: &[String], dir: &Path) -> anyhow::Result<()> {
     cmd.arg("up")
         .args(args.iter().filter(|a| !is_detach(a)))
         .env("OMNI2API_CHILD", "1")
+        .current_dir(dir)
         .stdin(Stdio::null())
         .stdout(log.try_clone()?)
         .stderr(log);
@@ -535,6 +536,11 @@ pub async fn run_up(args: &[String]) -> anyhow::Result<()> {
     std::fs::create_dir_all(&dir)?;
     if args.iter().any(|a| is_detach(a)) && std::env::var("OMNI2API_CHILD").is_err() {
         return detach(args, &dir);
+    }
+    // Request dumps (observation.rs) are a debugging aid for the hosted
+    // server; here they would litter whatever directory `up` started in.
+    if std::env::var_os("OPENHUMAN_OBSERVATION").is_none() {
+        std::env::set_var("OPENHUMAN_OBSERVATION", "off");
     }
     let keys = load_or_mint_keys(&dir)?;
     let state = build_state(&keys, &opts.name).await;
