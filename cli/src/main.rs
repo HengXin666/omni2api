@@ -277,6 +277,64 @@ fn rand_hex(n: usize) -> String {
     s
 }
 
+/// The seat often sits inside an agent sandbox whose only way out is an
+/// HTTP proxy, while the server it must reach is a public URL (the
+/// documented "server on the user's machine, seat in the sandbox" shape).
+/// Honor the standard proxy variables like other command-line tools do.
+/// Loopback targets — the common same-machine server — and `NO_PROXY`
+/// matches are never proxied.
+fn env_proxy_for(url: &str) -> Option<ureq::Proxy> {
+    let host = url_host(url);
+    let no_proxy = std::env::var("NO_PROXY")
+        .or_else(|_| std::env::var("no_proxy"))
+        .unwrap_or_default();
+    if host_is_bypassed(&host, &no_proxy) {
+        return None;
+    }
+    for var in [
+        "ALL_PROXY",
+        "all_proxy",
+        "HTTPS_PROXY",
+        "https_proxy",
+        "HTTP_PROXY",
+        "http_proxy",
+    ] {
+        if let Ok(v) = std::env::var(var) {
+            if let Ok(p) = ureq::Proxy::new(v) {
+                return Some(p);
+            }
+        }
+    }
+    None
+}
+
+/// The host part of a URL, lowercased, without port or brackets.
+fn url_host(url: &str) -> String {
+    let rest = url.split("://").nth(1).unwrap_or(url);
+    let hostport = rest.split('/').next().unwrap_or("");
+    let host = if let Some(v6) = hostport.strip_prefix('[') {
+        v6.split(']').next().unwrap_or("")
+    } else {
+        hostport.split(':').next().unwrap_or("")
+    };
+    host.to_ascii_lowercase()
+}
+
+fn host_is_bypassed(host: &str, no_proxy: &str) -> bool {
+    if host == "localhost" || host.ends_with(".localhost") {
+        return true;
+    }
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        if ip.is_loopback() {
+            return true;
+        }
+    }
+    no_proxy
+        .split(',')
+        .map(|e| e.trim().trim_start_matches('.').to_ascii_lowercase())
+        .any(|e| e == "*" || (!e.is_empty() && (host == e || host.ends_with(&format!(".{e}")))))
+}
+
 struct Ctx {
     url: String,
     key: String,
@@ -374,10 +432,13 @@ impl Ctx {
             st.consumer = std::env::var("OH_SEAT_CONSUMER")
                 .unwrap_or_else(|_| format!("oh-seat-{}", rand_hex(8)));
         }
-        let agent = ureq::AgentBuilder::new()
+        let mut agent_builder = ureq::AgentBuilder::new()
             .timeout_connect(Duration::from_secs(15))
-            .user_agent(UA)
-            .build();
+            .user_agent(UA);
+        if let Some(proxy) = env_proxy_for(&url) {
+            agent_builder = agent_builder.proxy(proxy);
+        }
+        let agent = agent_builder.build();
         Ok(Ctx {
             url: url.trim().trim_end_matches('/').to_string(),
             key,
@@ -2534,6 +2595,27 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn proxy_bypass_covers_loopback_and_no_proxy() {
+        assert!(super::host_is_bypassed("localhost", ""));
+        assert!(super::host_is_bypassed("dev.localhost", ""));
+        assert!(super::host_is_bypassed("127.0.0.1", ""));
+        assert!(super::host_is_bypassed("::1", ""));
+        assert!(!super::host_is_bypassed("x.run.pinggy-free.link", ""));
+        assert!(super::host_is_bypassed(
+            "api.example.com",
+            "internal, .example.com"
+        ));
+        assert!(!super::host_is_bypassed("api.example.com", "other.com"));
+        assert!(super::host_is_bypassed("anything.net", "*"));
+        assert_eq!(
+            super::url_host("https://X.Run.Pinggy-Free.Link:443/v1"),
+            "x.run.pinggy-free.link"
+        );
+        assert_eq!(super::url_host("http://[::1]:8080"), "::1");
+        assert_eq!(super::url_host("http://127.0.0.1:8080"), "127.0.0.1");
+    }
+
     #[test]
     fn first_sentence_skips_eg() {
         assert_eq!(

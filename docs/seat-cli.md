@@ -23,7 +23,10 @@ export OH_SEAT_URL=https://your-server            # default: local omni2api, els
 export OH_SEAT_KEY_FILE=~/.omni2api/seat_key      # a responder-scope ohk_ key
 ```
 
-`OH_SEAT_KEY` works too but puts the key in shell history. State (cursor,
+`OH_SEAT_KEY` works too but puts the key in shell history. Remote URLs
+honor the standard proxy variables (`ALL_PROXY` / `HTTPS_PROXY` /
+`HTTP_PROXY`) — a seat inside a proxied sandbox can still reach a public
+server; loopback targets and `NO_PROXY` matches are never proxied. State (cursor,
 active conversation, buffered events) lives in `~/.omni2api/seat-state.json`
 (`--state` / `OH_SEAT_STATE`). Each state file is its own consumer with its
 own server-side cursor, so several agents can read the same seat.

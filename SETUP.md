@@ -40,6 +40,11 @@ First decide whether a tunnel is needed. Two things can be remote: the seat
 
 If unsure, use the tunnel: it costs nothing and the local URL keeps working.
 
+A seat connecting to a public URL from inside a proxied sandbox:
+`oh-seat` honors the standard proxy variables (`ALL_PROXY` /
+`HTTPS_PROXY` / `HTTP_PROXY`); loopback targets and `NO_PROXY` matches
+are never proxied.
+
 ```sh
 omni2api up -d
 ```
